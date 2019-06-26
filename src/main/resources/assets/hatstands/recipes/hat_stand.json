@@ -1,0 +1,12 @@
+{
+	"type": "forge:ore_shaped",
+	"pattern": [
+		" / ",
+		"/_/"
+	],
+	"key": {
+		"/": { "type": "forge:ore_dict", "ore": "stickWood" },
+		"_": { "item": "minecraft:stone_slab", "data": 0 }
+	},
+	"result": { "item": "hat_stand" }
+}
