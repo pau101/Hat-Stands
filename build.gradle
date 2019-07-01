@@ -10,12 +10,6 @@ buildscript {
 	}
 }
 
-repositories {
-	maven {
-		url "https://modmaven.k-4u.nl"
-	}
-}
-
 apply plugin: "net.minecraftforge.gradle.forge"
 
 version = "${modVersion}-1.12.2"
@@ -28,11 +22,6 @@ minecraft {
 	runDir = "run"
 	mappings = project.mcpVersion
 	makeObfSourceJar = false
-}
-
-dependencies {
-	deobfProvided "mezz.jei:jei_1.12.2:4.15.0.277:api"
-	runtime "mezz.jei:jei_1.12.2:4.15.0.277"
 }
 
 // workaround for FML DirectoryDiscoverer limitations
@@ -53,7 +42,11 @@ processResources {
 		"forgeVersion": project.forgeVersion
 	]
 	inputs.properties(vars)
-	from("src/main/template-resources") {
+	from(sourceSets.main.resources.srcDirs) {
+		include("mcmod.info")
 		expand(vars)
+	}
+	from(sourceSets.main.resources.srcDirs) {
+		exclude("mcmod.info")
 	}
 }

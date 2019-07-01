@@ -34,5 +34,14 @@
       "dig/stone4"
     ],
     "subtitle": "subtitles.block.generic.place"
+  },
+  "entity.hat_stand.sexysong": {
+    "sounds": [
+      {
+        "name": "hatstands:sexysong",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitles.hatstands.sexysong"
   }
 }

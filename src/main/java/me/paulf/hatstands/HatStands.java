@@ -15,30 +15,30 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
 @Mod(modid = HatStands.ID)
 @Mod.EventBusSubscriber(modid = HatStands.ID)
 public final class HatStands {
-	public static final String ID = "hatstands";
+    public static final String ID = "hatstands";
 
-	private static final String NAME = "hat_stand";
+    private static final String NAME = "hat_stand";
 
-	@GameRegistry.ObjectHolder(HatStands.ID + ":" + NAME)
-	public static final Item ITEM = Items.AIR;
+    @GameRegistry.ObjectHolder(HatStands.ID + ":" + NAME)
+    public static final Item ITEM = Items.AIR;
 
-	@SubscribeEvent
-	public static void onItemRegister(final RegistryEvent.Register<Item> event) {
-		event.getRegistry().register(new HatStandItem()
-			.setTranslationKey(NAME)
-			.setMaxStackSize(16)
-			.setRegistryName(NAME)
-		);
-	}
+    @SubscribeEvent
+    public static void onItemRegister(final RegistryEvent.Register<Item> event) {
+        event.getRegistry().register(new HatStandItem()
+            .setTranslationKey(NAME)
+            .setMaxStackSize(16)
+            .setRegistryName(NAME)
+        );
+    }
 
-	@SubscribeEvent
-	public static void onEntityRegister(final RegistryEvent.Register<EntityEntry> event) {
-		event.getRegistry().register(EntityEntryBuilder.create()
-			.entity(HatStandEntity.class)
-			.factory(HatStandEntity::new)
-			.id(new ResourceLocation(ID, NAME), 0)
-			.name(NAME)
-			.tracker(160, 3, true)
-			.build());
-	}
+    @SubscribeEvent
+    public static void onEntityRegister(final RegistryEvent.Register<EntityEntry> event) {
+        event.getRegistry().register(EntityEntryBuilder.create()
+            .entity(HatStandEntity.class)
+            .factory(HatStandEntity::new)
+            .id(new ResourceLocation(ID, NAME), 0)
+            .name(NAME)
+            .tracker(160, 3, true)
+            .build());
+    }
 }

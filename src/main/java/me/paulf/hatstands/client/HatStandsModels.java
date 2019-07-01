@@ -15,12 +15,12 @@ import java.util.Objects;
 
 @Mod.EventBusSubscriber(value = Side.CLIENT, modid = HatStands.ID)
 public final class HatStandsModels {
-	private HatStandsModels() {}
+    private HatStandsModels() {}
 
-	@SubscribeEvent
-	public static void onRegister(final ModelRegistryEvent event) {
-		ModelLoader.setCustomModelResourceLocation(HatStands.ITEM, 0, new ModelResourceLocation(Objects.requireNonNull(HatStands.ITEM.getRegistryName(), "registry name"), "inventory"));
-		RenderingRegistry.registerEntityRenderingHandler(HatStandEntity.class, HatStandRenderer::new);
+    @SubscribeEvent
+    public static void onRegister(final ModelRegistryEvent event) {
+        ModelLoader.setCustomModelResourceLocation(HatStands.ITEM, 0, new ModelResourceLocation(Objects.requireNonNull(HatStands.ITEM.getRegistryName(), "registry name"), "inventory"));
+        RenderingRegistry.registerEntityRenderingHandler(HatStandEntity.class, HatStandRenderer::new);
 
-	}
+    }
 }
