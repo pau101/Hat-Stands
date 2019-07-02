@@ -43,7 +43,6 @@ import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.ServerChatEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
-import org.lwjgl.util.Display;
 
 import javax.annotation.Nullable;
 import java.net.Proxy;
@@ -168,7 +167,7 @@ class Alexa implements Runnable {
 						world.playEvent(RECORD_EVENT, candidates.first(), Item.getIdFromItem(item));
 					}
 				} else {
-					e.typeMessage(String.format("I can't find '%s' in your library.", second));
+					e.typeMessage(String.format("I can't find the song '%s.'", second));
 				}
 			} else if ("stop".equals(first)) {
 				final SortedSet<BlockPos> candidates = this.findJukebox();
