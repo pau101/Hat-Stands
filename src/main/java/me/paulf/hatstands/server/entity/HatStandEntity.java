@@ -383,9 +383,9 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
                                                 return entity != HatStandEntity.this && super.canBeHooked(entity);
                                             }
                                         };
-                                        final Vec3d offset = new Vec3d(-0.35D, 0.45D - angler.getEyeHeight() + this.getEyeHeight(), -0.8D + 0.25D).rotateYaw(Mth.toRadians(this.rotationYaw));
+                                        final Vec3d offset = new Vec3d(0.0D, this.getEyeHeight(), 0.25D).rotateYaw(Mth.toRadians(this.rotationYaw)).add(new Vec3d(-0.35D, 0.45D - angler.getEyeHeight(), -0.8D));
                                         // Position client for line to start at center of hat stand face
-                                        angler.setLocationAndAngles(this.posX + offset.x, this.posY  + offset.y, this.posZ + offset.z, this.rotationYaw, 35.0F);
+                                        angler.setLocationAndAngles(this.posX + offset.x, this.posY + offset.y, this.posZ + offset.z, 0.0F, 35.0F);
                                         angler.setPrimaryHand(EnumHandSide.RIGHT);
                                         angler.setHeldItem(EnumHand.MAIN_HAND, new ItemStack(Items.FISHING_ROD));
                                         angler.setInvisible(true);
@@ -395,7 +395,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
                                         tracker.sendToTracking(this, new SPacketPlayerListItem(SPacketPlayerListItem.Action.REMOVE_PLAYER, angler));
                                         tracker.sendToTracking(this, new SPacketEntityMetadata(angler.getEntityId(), angler.getDataManager(), true));
                                         // Position for loot to fly towards
-                                        angler.setLocationAndAngles(this.posX, this.posY, this.posZ, this.rotationYaw, 35.0F);
+                                        angler.setLocationAndAngles(this.posX, this.posY, this.posZ, 0.0F, 35.0F);
                                         this.world.spawnEntity(hook[0]);
                                         break;
                                     }
