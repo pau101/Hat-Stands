@@ -161,7 +161,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         .put("extraegg", this.onServer(e -> new Behavior() {
             @Override
             public void onUpdate() {
-                if (e.ticksExisted % 29 == 0 && e.rand.nextFloat() < 0.333F) {
+                if (e.ticksExisted % 59 == 0 && e.rand.nextFloat() < 0.9F) {
                     e.rotationPitch = 15.0F;
                     e.playSound(SoundEvents.ENTITY_EGG_THROW, 0.5F, 0.4F / (e.rand.nextFloat() * 0.4F + 0.8F));
                     final EntityEgg egg = new EntityEgg(e.world, e);
@@ -232,6 +232,11 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
                 } else {
                     e.lookAt(player);
                 }
+            }
+
+            @Override
+            public void onEnd() {
+                e.lookForward();
             }
         }))
         .put("pwnpeeps", this.onServer(e -> new Behavior() {
@@ -388,13 +393,17 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         super.notifyDataManagerChange(key);
         // data parameter is private so we serializer type
         if (key.getSerializer() == DataSerializers.STRING) {
-            this.handleName(this.getCustomNameTag());
+            this.setBehavior(this.getCustomNameTag());
         }
     }
 
-    private void lookForward() {
-        this.rotationPitch = 0.0F;
-        this.rotationYawHead = this.rotationYaw;
+    private void setBehavior(final String name) {
+        final Behavior behavior = this.behaviors.getOrDefault(CharMatcher.whitespace().removeFrom(name).toLowerCase(Locale.ROOT), Behavior.ABSENT);
+        if (!behavior.equals(this.behavior)) {
+            this.behavior.onEnd();
+            this.behavior = behavior;
+            this.behavior.onStart();
+        }
     }
 
     @Override
@@ -409,18 +418,6 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         return super.processInitialInteract(player, hand);
     }
 
-    private static final class CatFactsHolder {
-        private static final ImmutableList<String> CAT_FACTS = readCatFacts();
-
-        private static ImmutableList<String> readCatFacts() {
-            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(MinecraftServer.class.getResourceAsStream("/assets/" + HatStands.ID + "/texts/catfacts.txt")))) {
-                return reader.lines().collect(ImmutableList.toImmutableList());
-            } catch (final IOException e) {
-                return ImmutableList.of("Cat facts are surprisingly difficult to find.");
-            }
-        }
-    }
-
     private Behavior onServer(final Function<? super HatStandEntity, Behavior> behavior) {
         return this.world.isRemote ? Behavior.ABSENT : behavior.apply(this);
     }
@@ -429,30 +426,26 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         return this.world.isRemote ? behavior.apply(this) : Behavior.ABSENT;
     }
 
-    private void setScale(final float scale) {
-        this.setSize(WIDTH * scale, HEIGHT * scale);
-    }
-
-    private void resetSize() {
-        this.setSize(WIDTH, HEIGHT);
-    }
-
-    private void handleName(final String name) {
-        final Behavior behavior = this.behaviors.getOrDefault(CharMatcher.whitespace().removeFrom(name).toLowerCase(Locale.ROOT), Behavior.ABSENT);
-        if (!behavior.equals(this.behavior)) {
-            this.behavior.onEnd();
-            this.behavior = behavior;
-            this.behavior.onStart();
-        }
-    }
-
     @Override
     public void setDead() {
         super.setDead();
         this.behavior.onEnd();
     }
 
-    private void lookAt(final Entity target) {
+    void setScale(final float scale) {
+        this.setSize(WIDTH * scale, HEIGHT * scale);
+    }
+
+    void resetSize() {
+        this.setSize(WIDTH, HEIGHT);
+    }
+
+    void lookForward() {
+        this.rotationPitch = 0.0F;
+        this.rotationYawHead = this.rotationYaw;
+    }
+
+   void lookAt(final Entity target) {
         final double dx = target.posX - this.posX;
         final double dy = (target.posY + target.getEyeHeight()) - (this.posY + this.getEyeHeight());
         final double dz = target.posZ - this.posZ;
@@ -581,7 +574,11 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     private void dropItem() {
-        Block.spawnAsEntity(this.world, new BlockPos(this), new ItemStack(HatStands.ITEM));
+        final ItemStack stack = new ItemStack(HatStands.ITEM);
+        if (this.hasCustomName()) {
+            stack.setStackDisplayName(this.getCustomNameTag());
+        }
+        Block.spawnAsEntity(this.world, new BlockPos(this), stack);
         this.dropContents();
     }
 
@@ -695,5 +692,17 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         final HatStandEntity hatStand = new HatStandEntity(world);
         hatStand.setPositionAndRotation(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, yaw, 0.0F);
         return hatStand;
+    }
+
+    private static final class CatFactsHolder {
+        private static final ImmutableList<String> CAT_FACTS = readCatFacts();
+
+        private static ImmutableList<String> readCatFacts() {
+            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(MinecraftServer.class.getResourceAsStream("/assets/" + HatStands.ID + "/texts/catfacts.txt")))) {
+                return reader.lines().collect(ImmutableList.toImmutableList());
+            } catch (final IOException e) {
+                return ImmutableList.of("Cat facts are surprisingly difficult to find.");
+            }
+        }
     }
 }

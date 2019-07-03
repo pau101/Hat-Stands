@@ -3,6 +3,7 @@ package me.paulf.hatstands.server.entity;
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
 import com.google.gson.stream.JsonReader;
+import com.mojang.authlib.HttpAuthenticationService;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,23 +35,16 @@ import static java.time.temporal.ChronoField.YEAR;
 public final class News {
 	private News() {}
 
-	private static final URL CONTENT;
-
-	static {
-		try {
-			CONTENT = new URL("https://www.minecraft.net/content/minecraft-net/_jcr_content.articles.grid?" +
-				"tileselection=auto&" +
-				"tagsPath=minecraft:article/culture,minecraft:article/insider,minecraft:article/merch,minecraft:article/news&" +
-				"propResPath=/content/minecraft-net/language-masters/en-us/jcr:content/root/generic-container/par/grid&" +
-				"count=2000&" +
-				"pageSize=6&" +
-				"tag=News&" +
-				"lang=/content/minecraft-net/language-masters/en-us"
-			);
-		} catch (final MalformedURLException e) {
-			throw new InternalError(e);
-		}
-	}
+	private static final URL CONTENT = HttpAuthenticationService.constantURL(
+			"https://www.minecraft.net/content/minecraft-net/_jcr_content.articles.grid?"+
+			"tileselection=auto&"+
+			"tagsPath=minecraft:article/culture,minecraft:article/insider,minecraft:article/merch,minecraft:article/news&"+
+			"propResPath=/content/minecraft-net/language-masters/en-us/jcr:content/root/generic-container/par/grid&"+
+			"count=2000&"+
+			"pageSize=6&"+
+			"tag=News&"+
+			"lang=/content/minecraft-net/language-masters/en-us"
+		);
 
 	private static final DateTimeFormatter FORMATTER = new DateTimeFormatterBuilder()
 		.appendValue(DAY_OF_MONTH, 1, 2, SignStyle.NOT_NEGATIVE)

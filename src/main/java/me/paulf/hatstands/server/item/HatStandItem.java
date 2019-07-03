@@ -47,6 +47,9 @@ public final class HatStandItem extends Item {
                 yaw = facing.getHorizontalAngle();
             }
             final HatStandEntity stand = HatStandEntity.create(world, placePos, yaw);
+            if (stack.hasDisplayName()) {
+                stand.setCustomNameTag(stack.getDisplayName());
+            }
             ItemMonsterPlacer.applyItemEntityDataToEntity(world, player, stack, stand);
             world.spawnEntity(stand);
             world.playSound(null, placePos, HatStandsSounds.ENTITY_HAT_STAND_PLACE, stand.getSoundCategory(), 0.75F, 0.8F);

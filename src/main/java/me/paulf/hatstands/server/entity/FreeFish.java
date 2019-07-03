@@ -122,6 +122,7 @@ public class FreeFish implements Behavior {
 
 	@Override
 	public void onEnd() {
+		this.entity.lookForward();
 		MinecraftForge.EVENT_BUS.unregister(this);
 		this.removeAngler();
 	}
