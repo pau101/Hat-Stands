@@ -160,7 +160,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         .put("extraegg", this.onServer(e -> new Behavior() {
             @Override
             public void onUpdate() {
-                if (e.ticksExisted % 59 == 0 && e.rand.nextFloat() < 0.9F) {
+                if (e.ticksExisted % 151 == 0 && e.rand.nextFloat() < 0.25F) {
                     e.rotationPitch = 15.0F;
                     e.playSound(SoundEvents.ENTITY_EGG_THROW, 0.5F, 0.4F / (e.rand.nextFloat() * 0.4F + 0.8F));
                     final EntityEgg egg = new EntityEgg(e.world, e);
@@ -176,7 +176,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         .put("hasheart", this.onClient(e -> new Behavior() {
             @Override
             public void onUpdate() {
-                if (e.rand.nextFloat() < 0.4F && e.ticksExisted % 5 == 0) {
+                if (e.ticksExisted % 5 == 0 && e.rand.nextFloat() < 0.4F) {
                     e.world.spawnParticle(
                         EnumParticleTypes.HEART,
                         e.posX + e.rand.nextFloat() * e.width * 2.0F - e.width,
