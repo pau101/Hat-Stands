@@ -1,14 +1,14 @@
-package me.paulf.hatstands.client.model.entity;
+package me.paulf.hatstands.client;
 
 import me.paulf.hatstands.util.Mth;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.entity.Entity;
 
-public final class ModelHatStand extends ModelBase {
+public final class HatStandModel extends ModelBase {
     private final ModelRenderer plate, head, rod;
 
-    public ModelHatStand() {
+    public HatStandModel() {
         this.textureWidth = this.textureHeight = 32;
         this.head = new ModelRenderer(this, 0, 9);
         this.head.setRotationPoint(0.0F, -3.0F, 0.0F);

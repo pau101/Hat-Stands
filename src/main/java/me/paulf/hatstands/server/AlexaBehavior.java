@@ -1,4 +1,4 @@
-package me.paulf.hatstands.server.entity;
+package me.paulf.hatstands.server;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.EvictingQueue;
@@ -62,7 +62,7 @@ import java.util.regex.Pattern;
 import static java.time.temporal.ChronoField.DAY_OF_MONTH;
 import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
 
-class Alexa implements Behavior {
+class AlexaBehavior implements Behavior {
 	private final HatStandEntity entity;
 
 	private final Splitter argSplitter = Splitter.on(Pattern.compile(" |(?=[!,.;?])")).omitEmptyStrings();
@@ -71,7 +71,7 @@ class Alexa implements Behavior {
 
 	private int remaining = 0;
 
-	Alexa(final HatStandEntity entity) {
+	AlexaBehavior(final HatStandEntity entity) {
 		this.entity = entity;
 	}
 
@@ -299,7 +299,7 @@ class Alexa implements Behavior {
 							if (!e.isEntityAlive()) {
 								return;
 							}
-							Alexa.this.remaining = 1;
+							AlexaBehavior.this.remaining = 1;
 							if (result == null || result.isEmpty()) {
 								e.typeMessage(SOMETHING_WENT_WRONG);
 								return;
@@ -329,7 +329,7 @@ class Alexa implements Behavior {
 						@Override
 						public void onFailure(final Throwable t) {
 							if (e.isEntityAlive()) {
-								Alexa.this.remaining = Math.abs(Alexa.this.remaining);
+								AlexaBehavior.this.remaining = Math.abs(AlexaBehavior.this.remaining);
 								e.typeMessage(SOMETHING_WENT_WRONG);
 							}
 						}

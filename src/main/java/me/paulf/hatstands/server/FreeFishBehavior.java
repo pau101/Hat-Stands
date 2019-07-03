@@ -1,4 +1,4 @@
-package me.paulf.hatstands.server.entity;
+package me.paulf.hatstands.server;
 
 import com.mojang.authlib.GameProfile;
 import me.paulf.hatstands.util.Mth;
@@ -33,14 +33,14 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import java.util.Random;
 import java.util.UUID;
 
-public class FreeFish implements Behavior {
+public class FreeFishBehavior implements Behavior {
 	private final HatStandEntity entity;
 
 	private EntityFishHook hook;
 
 	private FakePlayer angler;
 
-	public FreeFish(final HatStandEntity entity) {
+	public FreeFishBehavior(final HatStandEntity entity) {
 		this.entity = entity;
 	}
 

@@ -1,11 +1,10 @@
-package me.paulf.hatstands.server.entity;
+package me.paulf.hatstands.server;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.netty.buffer.ByteBuf;
 import me.paulf.hatstands.HatStands;
-import me.paulf.hatstands.server.sound.HatStandsSounds;
 import me.paulf.hatstands.util.Mth;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
@@ -75,7 +74,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     private final NonNullList<ItemStack> armorItems;
 
     private final ImmutableMap<String, Behavior> behaviors = ImmutableMap.<String, Behavior>builder()
-        .put("askalexa", this.onServer(Alexa::new))
+        .put("askalexa", this.onServer(AlexaBehavior::new))
         .put("allarmed", this.onServer(e -> new Behavior() {
             @Override
             public void onUpdate() {
@@ -173,7 +172,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
                 }
             }
         }))
-        .put("freefish", this.onServer(FreeFish::new))
+        .put("freefish", this.onServer(FreeFishBehavior::new))
         .put("hasheart", this.onClient(e -> new Behavior() {
             @Override
             public void onUpdate() {
@@ -215,7 +214,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         .put("sexysong", this.onServer(e -> new Behavior() {
             @Override
             public void onCreate(final EntityPlayer player) {
-                e.playSound(HatStandsSounds.ENTITY_HAT_STAND_SEXYSONG, 1.0F, 1.0F);
+                e.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG, 1.0F, 1.0F);
             }
         }))
         .put("smallspy", this.onClient(e -> new Behavior() {
@@ -287,7 +286,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
 
     @Override
     public ItemStack getPickedResult(final RayTraceResult target) {
-        return new ItemStack(HatStands.ITEM);
+        return new ItemStack(HatStands.Items.HAT_STAND);
     }
 
     @Override
@@ -342,17 +341,17 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
 
     @Override
     protected SoundEvent getFallSound(final int distance) {
-        return HatStandsSounds.ENTITY_HAT_STAND_FALL;
+        return HatStands.SoundEvents.ENTITY_HAT_STAND_FALL;
     }
 
     @Override
     protected SoundEvent getHurtSound(final DamageSource damage) {
-        return HatStandsSounds.ENTITY_HAT_STAND_HIT;
+        return HatStands.SoundEvents.ENTITY_HAT_STAND_HIT;
     }
 
     @Override
     protected SoundEvent getDeathSound() {
-        return HatStandsSounds.ENTITY_HAT_STAND_BREAK;
+        return HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK;
     }
 
     @Nullable
@@ -574,7 +573,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     private void dropItem() {
-        final ItemStack stack = new ItemStack(HatStands.ITEM);
+        final ItemStack stack = new ItemStack(HatStands.Items.HAT_STAND);
         if (this.hasCustomName()) {
             stack.setStackDisplayName(this.getCustomNameTag());
         }
@@ -602,7 +601,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     private void playBreakSound() {
-        this.world.playSound(null, this.posX, this.posY, this.posZ, HatStandsSounds.ENTITY_HAT_STAND_BREAK, this.getSoundCategory(), 1.0F, 1.0F);
+        this.world.playSound(null, this.posX, this.posY, this.posZ, HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK, this.getSoundCategory(), 1.0F, 1.0F);
     }
 
     private void playParticles() {
@@ -625,7 +624,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     public void handleStatusUpdate(final byte id) {
         if (id == PUNCH_ID) {
             if (this.world.isRemote) {
-                this.world.playSound(this.posX, this.posY, this.posZ, HatStandsSounds.ENTITY_HAT_STAND_HIT, this.getSoundCategory(), 0.3F, 1.0F, false);
+                this.world.playSound(this.posX, this.posY, this.posZ, HatStands.SoundEvents.ENTITY_HAT_STAND_HIT, this.getSoundCategory(), 0.3F, 1.0F, false);
                 this.lastPunchTime = this.world.getTotalWorldTime();
             }
         } else {

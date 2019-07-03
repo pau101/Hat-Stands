@@ -1,8 +1,7 @@
-package me.paulf.hatstands.client.renderer.entity;
+package me.paulf.hatstands.client;
 
 import com.mojang.authlib.GameProfile;
-import me.paulf.hatstands.client.model.entity.ModelHatStandArmor;
-import me.paulf.hatstands.server.entity.HatStandEntity;
+import me.paulf.hatstands.server.HatStandEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.renderer.GlStateManager;
@@ -27,7 +26,7 @@ import org.apache.commons.lang3.StringUtils;
 public final class HatStandArmorLayer implements LayerRenderer<HatStandEntity> {
     private final HatStandRenderer renderer;
 
-    private final ModelHatStandArmor armor = new ModelHatStandArmor(1.0F);
+    private final ModelBiped armor = new ModelBiped(1.0F);
 
     public HatStandArmorLayer(final HatStandRenderer renderer) {
         this.renderer = renderer;

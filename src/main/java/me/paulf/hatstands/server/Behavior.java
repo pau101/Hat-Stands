@@ -1,4 +1,4 @@
-package me.paulf.hatstands.server.entity;
+package me.paulf.hatstands.server;
 
 import net.minecraft.entity.player.EntityPlayer;
 

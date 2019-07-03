@@ -1,4 +1,4 @@
-package me.paulf.hatstands.server.entity;
+package me.paulf.hatstands.server;
 
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;

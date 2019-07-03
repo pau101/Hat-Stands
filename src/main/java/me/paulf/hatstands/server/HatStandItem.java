@@ -1,7 +1,7 @@
-package me.paulf.hatstands.server.item;
+package me.paulf.hatstands.server;
 
-import me.paulf.hatstands.server.entity.HatStandEntity;
-import me.paulf.hatstands.server.sound.HatStandsSounds;
+import me.paulf.hatstands.HatStands;
+import me.paulf.hatstands.server.HatStandEntity;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.creativetab.CreativeTabs;
@@ -52,7 +52,7 @@ public final class HatStandItem extends Item {
             }
             ItemMonsterPlacer.applyItemEntityDataToEntity(world, player, stack, stand);
             world.spawnEntity(stand);
-            world.playSound(null, placePos, HatStandsSounds.ENTITY_HAT_STAND_PLACE, stand.getSoundCategory(), 0.75F, 0.8F);
+            world.playSound(null, placePos, HatStands.SoundEvents.ENTITY_HAT_STAND_PLACE, stand.getSoundCategory(), 0.75F, 0.8F);
         }
         stack.shrink(1);
         return EnumActionResult.SUCCESS;

@@ -1,8 +1,7 @@
 package me.paulf.hatstands.client;
 
 import me.paulf.hatstands.HatStands;
-import me.paulf.hatstands.client.renderer.entity.HatStandRenderer;
-import me.paulf.hatstands.server.entity.HatStandEntity;
+import me.paulf.hatstands.server.HatStandEntity;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraftforge.client.event.ModelRegistryEvent;
 import net.minecraftforge.client.model.ModelLoader;
@@ -19,8 +18,7 @@ public final class HatStandsModels {
 
     @SubscribeEvent
     public static void onRegister(final ModelRegistryEvent event) {
-        ModelLoader.setCustomModelResourceLocation(HatStands.ITEM, 0, new ModelResourceLocation(Objects.requireNonNull(HatStands.ITEM.getRegistryName(), "registry name"), "inventory"));
+        ModelLoader.setCustomModelResourceLocation(HatStands.Items.HAT_STAND, 0, new ModelResourceLocation(Objects.requireNonNull(HatStands.Items.HAT_STAND.getRegistryName(), "registry name"), "inventory"));
         RenderingRegistry.registerEntityRenderingHandler(HatStandEntity.class, HatStandRenderer::new);
-
     }
 }
