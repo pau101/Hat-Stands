@@ -38,6 +38,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.storage.WorldInfo;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.ServerChatEvent;
@@ -61,7 +62,7 @@ import java.util.regex.Pattern;
 import static java.time.temporal.ChronoField.DAY_OF_MONTH;
 import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
 
-class Alexa implements Runnable {
+class Alexa implements Behavior {
 	private final HatStandEntity entity;
 
 	private final Splitter argSplitter = Splitter.on(Pattern.compile(" |(?=[!,.;?])")).omitEmptyStrings();
@@ -79,7 +80,12 @@ class Alexa implements Runnable {
 	}
 
 	@Override
-	public void run() {
+	public void onStart() {
+		MinecraftForge.EVENT_BUS.register(this);
+	}
+
+	@Override
+	public void onUpdate() {
 		final Request pending = this.requests.peek();
 		if (pending != null) {
 			if (pending.time == 6) {
@@ -107,6 +113,11 @@ class Alexa implements Runnable {
 				this.remaining++;
 			}
 		}
+	}
+
+	@Override
+	public void onEnd() {
+		MinecraftForge.EVENT_BUS.unregister(this);
 	}
 
 	@SubscribeEvent

@@ -1,14 +1,13 @@
 package me.paulf.hatstands.server.entity;
 
+import com.google.common.base.CharMatcher;
 import com.google.common.collect.ImmutableList;
-import com.mojang.authlib.GameProfile;
+import com.google.common.collect.ImmutableMap;
 import io.netty.buffer.ByteBuf;
 import me.paulf.hatstands.HatStands;
 import me.paulf.hatstands.server.sound.HatStandsSounds;
 import me.paulf.hatstands.util.Mth;
 import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
@@ -19,7 +18,6 @@ import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.projectile.EntityEgg;
-import net.minecraft.entity.projectile.EntityFishHook;
 import net.minecraft.entity.projectile.EntityTippedArrow;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -31,15 +29,10 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.play.server.SPacketChunkData;
-import net.minecraft.network.play.server.SPacketDestroyEntities;
-import net.minecraft.network.play.server.SPacketEntityMetadata;
 import net.minecraft.network.play.server.SPacketOpenWindow;
-import net.minecraft.network.play.server.SPacketPlayerListItem;
-import net.minecraft.network.play.server.SPacketSpawnPlayer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.EnumHandSide;
 import net.minecraft.util.EnumParticleTypes;
@@ -57,10 +50,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkPrimer;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.Constants;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
 
 import javax.annotation.Nullable;
@@ -68,8 +58,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
-import java.util.Random;
-import java.util.function.Consumer;
+import java.util.Locale;
+import java.util.function.Function;
 
 public final class HatStandEntity extends EntityLivingBase implements IEntityAdditionalSpawnData {
     private static final byte PUNCH_ID = 32;
@@ -83,6 +73,196 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     private final NonNullList<ItemStack> handItems;
 
     private final NonNullList<ItemStack> armorItems;
+
+    private final ImmutableMap<String, Behavior> behaviors = ImmutableMap.<String, Behavior>builder()
+        .put("askalexa", this.onServer(Alexa::new))
+        .put("allarmed", this.onServer(e -> new Behavior() {
+            @Override
+            public void onUpdate() {
+                if (e.ticksExisted % 23 == 0) {
+                    final List<EntityMob> entities = e.world.getEntitiesWithinAABB(
+                        EntityMob.class,
+                        e.getEntityBoundingBox().grow(8.0D, 4.0D, 8.0D),
+                        e -> e != null && e.isEntityAlive() && !e.isOnSameTeam(e) && e.canEntityBeSeen(e)
+                    );
+                    if (entities.isEmpty()) {
+                        e.lookForward();
+                    } else {
+                        final EntityMob mob = entities.get(0);
+                        e.lookAt(mob);
+                        final EntityTippedArrow arrow = new EntityTippedArrow(e.world, e);
+                        arrow.shoot(e, e.rotationPitch, e.rotationYawHead, 0.0F, 3.0F, 1.0F);
+                        arrow.setIsCritical(true);
+                        e.world.spawnEntity(arrow);
+                        e.world.playSound(
+                            null,
+                            e.posX, e.posY, e.posZ,
+                            SoundEvents.ENTITY_ARROW_SHOOT,
+                            e.getSoundCategory(),
+                            1.0F,
+                            1.0F / (e.rand.nextFloat() * 0.4F + 1.2F) + 0.5F
+                        );
+                    }
+                }
+            }
+
+            @Override
+            public void onEnd() {
+                e.lookForward();
+            }
+        }))
+        .put("bebigger", new Behavior() {
+            @Override
+            public void onStart() {
+                HatStandEntity.this.setScale(1.5F);
+            }
+
+            @Override
+            public void onEnd() {
+                HatStandEntity.this.resetSize();
+            }
+        })
+        .put("catfacts", this.onServer(e -> new Behavior() {
+            int delay = -1;
+
+            @Override
+            public void onCreate(final EntityPlayer player) {
+                e.typeMessage("Thanks for signing up for Cat Facts! You now will receive fun daily facts about CATS! >o<");
+            }
+
+            @Override
+            public void onUpdate() {
+                if (this.delay < 0) {
+                    final int delayLower = 30 * 20;
+                    final int delayUpper = 2 * 60 * 20;
+                    this.delay = e.rand.nextInt(delayUpper - delayLower) + delayLower;
+                } else if (this.delay-- == 0) {
+                    final ImmutableList<String> facts = CatFactsHolder.CAT_FACTS;
+                    e.typeMessage(facts.get(e.rand.nextInt(facts.size())));
+                }
+            }
+        }))
+        .put("cutcable", this.onServer(e -> new Behavior() {
+            @Override
+            public void onUpdate() {
+                if (e.ticksExisted % 13 == 0) {
+                    final int r = 2;
+                    final BlockPos pos = new BlockPos(e).add(
+                        e.rand.nextInt(1 + 2 * r) - r,
+                        e.rand.nextInt(1 + 2 * r) - r,
+                        e.rand.nextInt(1 + 2 * r) - r
+                    );
+                    if (e.world.getBlockState(pos).getBlock() == Blocks.REDSTONE_WIRE) {
+                        e.world.destroyBlock(pos, true);
+                    }
+                }
+            }
+        }))
+        .put("extraegg", this.onServer(e -> new Behavior() {
+            @Override
+            public void onUpdate() {
+                if (e.ticksExisted % 29 == 0 && e.rand.nextFloat() < 0.333F) {
+                    e.rotationPitch = 15.0F;
+                    e.playSound(SoundEvents.ENTITY_EGG_THROW, 0.5F, 0.4F / (e.rand.nextFloat() * 0.4F + 0.8F));
+                    final EntityEgg egg = new EntityEgg(e.world, e);
+                    egg.ignoreEntity = e;
+                    egg.shoot(e, e.rotationPitch, e.rotationYaw, 0.0F, 1.5F, 1.0F);
+                    e.world.spawnEntity(egg);
+                } else if (e.ticksExisted % 13 == 5) {
+                    e.rotationPitch = 0.0F;
+                }
+            }
+        }))
+        .put("freefish", this.onServer(FreeFish::new))
+        .put("hasheart", this.onClient(e -> new Behavior() {
+            @Override
+            public void onUpdate() {
+                if (e.rand.nextFloat() < 0.4F && e.ticksExisted % 5 == 0) {
+                    e.world.spawnParticle(
+                        EnumParticleTypes.HEART,
+                        e.posX + e.rand.nextFloat() * e.width * 2.0F - e.width,
+                        e.posY + 0.5D + e.rand.nextFloat() * e.height,
+                        e.posZ + e.rand.nextFloat() * e.width * 2.0F - e.width,
+                        e.rand.nextGaussian() * 0.02D,
+                        e.rand.nextGaussian() * 0.02D,
+                        e.rand.nextGaussian() * 0.02D
+                    );
+                }
+            }
+        }))
+        .put("hithuman", this.onServer(e -> new Behavior() {
+            @Override
+            public void onUpdate() {
+                if (e.ticksExisted % 7 == 0 && e.rand.nextFloat() < 0.333F) {
+                    final DamageSource damage = DamageSource.causeMobDamage(e);
+                    for (final EntityPlayerMP player : e.world.getEntitiesWithinAABB(EntityPlayerMP.class, e.getEntityBoundingBox().grow(1.0D))) {
+                        player.attackEntityFrom(damage, 1.0F);
+                    }
+                }
+            }
+        }))
+        .put("moremini", new Behavior() {
+            @Override
+            public void onStart() {
+                HatStandEntity.this.setScale(0.5F);
+            }
+
+            @Override
+            public void onEnd() {
+                HatStandEntity.this.resetSize();
+            }
+        })
+        .put("sexysong", this.onServer(e -> new Behavior() {
+            @Override
+            public void onCreate(final EntityPlayer player) {
+                e.playSound(HatStandsSounds.ENTITY_HAT_STAND_SEXYSONG, 1.0F, 1.0F);
+            }
+        }))
+        .put("smallspy", this.onClient(e -> new Behavior() {
+            @Override
+            public void onCreate(final EntityPlayer player) {
+                this.onUpdate();
+            }
+
+            @Override
+            public void onUpdate() {
+                final @Nullable EntityPlayer player = e.world.getClosestPlayerToEntity(e, 8.0D);
+                if (player == null) {
+                    e.lookForward();
+                } else {
+                    e.lookAt(player);
+                }
+            }
+        }))
+        .put("pwnpeeps", this.onServer(e -> new Behavior() {
+            @Override
+            public void onCreate(final EntityPlayer player) {
+                final MinecraftServer server = e.world.getMinecraftServer();
+                if (server != null && server.getPlayerList().canSendCommands(player.getGameProfile())) {
+                    final EntityTracker tracker = ((WorldServer) e.world).getEntityTracker();
+                    //noinspection ConstantConditions
+                    tracker.sendToTracking(e, new SPacketOpenWindow(1, "minecraft:enchanting_table", null));
+                }
+            }
+        }))
+        .put("powerpwn", this.onServer(e -> new Behavior() {
+            @Override
+            public void onCreate(final EntityPlayer player) {
+                final MinecraftServer server = e.world.getMinecraftServer();
+                if (server != null && server.getPlayerList().canSendCommands(player.getGameProfile())) {
+                    final EntityTracker tracker = ((WorldServer) e.world).getEntityTracker();
+                    final ChunkPrimer primer = new ChunkPrimer();
+                    final BlockPos b = new BlockPos(e);
+                    primer.setBlockState(b.getX() & 0xF, b.getY(), b.getZ() & 0xF, Blocks.WATER.getDefaultState());
+                    primer.setBlockState(b.getX() & 0xF, b.getY(), MathHelper.abs((b.getZ() & 0xF) - 1), Blocks.RED_SHULKER_BOX.getDefaultState());
+                    primer.setBlockState(MathHelper.abs((b.getX() & 0xF) - 1), b.getY(), b.getZ() & 0xF, Blocks.RED_SHULKER_BOX.getDefaultState());
+                    tracker.sendToTracking(e, new SPacketChunkData(new Chunk(e.world, primer, b.getX() >> 4, b.getZ() >> 4), 0xFFFF));
+                }
+            }
+        }))
+        .build();
+
+    private Behavior behavior = Behavior.ABSENT;
 
     public HatStandEntity(final World world) {
         super(world);
@@ -197,14 +377,10 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         return false;
     }
 
-    private Runnable update = () -> {};
-
-    private Consumer<EntityPlayer> interact = p -> {};
-
     @Override
     public void onUpdate() {
         super.onUpdate();
-        this.update.run();
+        this.behavior.onUpdate();
     }
 
     @Override
@@ -226,7 +402,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         final ItemStack stack = player.getHeldItem(hand);
         if (stack.hasDisplayName()) {
             this.setCustomNameTag(stack.getDisplayName());
-            this.interact.accept(player);
+            this.behavior.onCreate(player);
             stack.shrink(1);
             return true;
         }
@@ -245,269 +421,35 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         }
     }
 
-    private static final class NewzHolder {
-        private static final ImmutableList<String> NEWZ = readCatFacts();
+    private Behavior onServer(final Function<? super HatStandEntity, Behavior> behavior) {
+        return this.world.isRemote ? Behavior.ABSENT : behavior.apply(this);
+    }
 
-        private static ImmutableList<String> readCatFacts() {
-            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(MinecraftServer.class.getResourceAsStream("/assets/" + HatStands.ID + "/texts/newz.txt")))) {
-                return reader.lines().collect(ImmutableList.toImmutableList());
-            } catch (final IOException e) {
-                return ImmutableList.of("Newz is surprisingly difficult to find.");
-            }
-        }
+    private Behavior onClient(final Function<? super HatStandEntity, Behavior> behavior) {
+        return this.world.isRemote ? behavior.apply(this) : Behavior.ABSENT;
+    }
+
+    private void setScale(final float scale) {
+        this.setSize(WIDTH * scale, HEIGHT * scale);
+    }
+
+    private void resetSize() {
+        this.setSize(WIDTH, HEIGHT);
     }
 
     private void handleName(final String name) {
-        this.lookForward();
-        MinecraftForge.EVENT_BUS.unregister(this.update);
-        this.update = () -> {};
-        this.interact = p -> {};
-        float w = WIDTH, h = HEIGHT;
-        if (name.length() == 8) {
-            switch (name) {
-                case "askalexa":
-                    if (!this.world.isRemote) {
-                        this.update = new Alexa(this);
-                        MinecraftForge.EVENT_BUS.register(this.update);
-                    }
-                    break;
-                case "allarmed":
-                    if (!this.world.isRemote) {
-                        this.update = () -> {
-                            if (this.ticksExisted % 23 == 0) {
-                                final List<EntityMob> entities = this.world.getEntitiesWithinAABB(
-                                    EntityMob.class,
-                                    this.getEntityBoundingBox().grow(8.0D, 4.0D, 8.0D),
-                                    e -> e != null && e.isEntityAlive() && !this.isOnSameTeam(e) && this.canEntityBeSeen(e)
-                                );
-                                if (entities.isEmpty()) {
-                                    this.lookForward();
-                                } else {
-                                    final EntityMob mob = entities.get(0);
-                                    this.lookAt(mob);
-                                    final EntityTippedArrow arrow = new EntityTippedArrow(this.world, this);
-                                    arrow.shoot(this, this.rotationPitch, this.rotationYawHead, 0.0F, 3.0F, 1.0F);
-                                    arrow.setIsCritical(true);
-                                    this.world.spawnEntity(arrow);
-                                    this.world.playSound(
-                                        null,
-                                        this.posX, this.posY, this.posZ,
-                                        SoundEvents.ENTITY_ARROW_SHOOT,
-                                        this.getSoundCategory(),
-                                        1.0F,
-                                        1.0F / (this.rand.nextFloat() * 0.4F + 1.2F) + 0.5F
-                                    );
-                                }
-                            }
-                        };
-                    }
-                    break;
-                case "bebigger":
-                    w *= 1.5F;
-                    h *= 1.5F;
-                    break;
-                case "catfacts":
-                    if (!this.world.isRemote) {
-                        final int[] delay = { -1 };
-                        this.update = () -> {
-                            if (delay[0] < 0) {
-                                final int delayLower = 30 * 20;
-                                final int delayUpper = 2 * 60 * 20;
-                                delay[0] = this.rand.nextInt(delayUpper - delayLower) + delayLower;
-                            } else if (delay[0]-- == 0) {
-                                final ImmutableList<String> facts = CatFactsHolder.CAT_FACTS;
-                                this.typeMessage(facts.get(this.rand.nextInt(facts.size())));
-                            }
-                        };
-                        this.interact = p -> this.typeMessage("Thanks for signing up for Cat Facts! You now will receive fun daily facts about CATS! >o<");
-                    }
-                    break;
-                case "cutcable":
-                    if (!this.world.isRemote) {
-                        this.update = () -> {
-                            if (this.ticksExisted % 13 == 0) {
-                                final int r = 2;
-                                final BlockPos pos = new BlockPos(this).add(
-                                    this.rand.nextInt(1 + 2 * r) - r,
-                                    this.rand.nextInt(1 + 2 * r) - r,
-                                    this.rand.nextInt(1 + 2 * r) - r
-                                );
-                                if (this.world.getBlockState(pos).getBlock() == Blocks.REDSTONE_WIRE) {
-                                    this.world.destroyBlock(pos, true);
-                                }
-                            }
-                        };
-                    }
-                    break;
-                // dropdead
-                // drumdude
-                case "extraegg":
-                    if (!this.world.isRemote) {
-                        this.update = () -> {
-                            if (this.ticksExisted % 29 == 0 && this.rand.nextFloat() < 0.333F) {
-                                this.rotationPitch = 15.0F;
-                                this.playSound(SoundEvents.ENTITY_EGG_THROW, 0.5F, 0.4F / (this.rand.nextFloat() * 0.4F + 0.8F));
-                                final EntityEgg egg = new EntityEgg(this.world, this);
-                                egg.ignoreEntity = this;
-                                egg.shoot(this, this.rotationPitch, this.rotationYaw, 0.0F, 1.5F, 1.0F);
-                                this.world.spawnEntity(egg);
-                            } else if (this.ticksExisted % 13 == 5) {
-                                this.rotationPitch = 0.0F;
-                            }
-                        };
-                    }
-                    break;
-                case "freefish":
-                    if (!this.world.isRemote) {
-                        final EntityFishHook[] hook = { null };
-                        this.update = () -> {
-                            if (hook[0] == null && this.ticksExisted % 37 == 0) {
-                                final BlockPos origin = new BlockPos(this);
-                                final EnumFacing facing = this.getHorizontalFacing();
-                                for (int n = 0; n < 16; n++) {
-                                    final BlockPos pos = origin.offset(facing, n / 4 + 3).down(n % 4 + 1);
-                                    final IBlockState state = this.world.getBlockState(pos);
-                                    if (state.getMaterial() == Material.WATER) {
-                                        final Vec3d begin = new Vec3d(this.posX, this.posY + this.getEyeHeight(), this.posZ);
-                                        final Vec3d end = new Vec3d(pos.getX() + 0.5D, pos.getY() + 1.0D, pos.getZ() + 0.5D);
-                                        if (this.world.rayTraceBlocks(begin, end, false, true, false) != null) {
-                                            break;
-                                        }
-                                        final FakePlayer angler = this.getAngler();
-                                        this.rotationPitch = 10.0F;
-                                        // Position for hook to shoot from
-                                        angler.setLocationAndAngles(this.posX, this.posY, this.posZ + 0.25D, this.rotationYaw, 35.0F);
-                                        hook[0] = new EntityFishHook(this.world, angler) {
-                                            @Override
-                                            protected boolean canBeHooked(final Entity entity) {
-                                                return entity != HatStandEntity.this && super.canBeHooked(entity);
-                                            }
-                                        };
-                                        final Vec3d offset = new Vec3d(0.0D, this.getEyeHeight(), 0.25D).rotateYaw(Mth.toRadians(this.rotationYaw)).add(new Vec3d(-0.35D, 0.45D - angler.getEyeHeight(), -0.8D));
-                                        // Position client for line to start at center of hat stand face
-                                        angler.setLocationAndAngles(this.posX + offset.x, this.posY + offset.y, this.posZ + offset.z, 0.0F, 35.0F);
-                                        angler.setPrimaryHand(EnumHandSide.RIGHT);
-                                        angler.setHeldItem(EnumHand.MAIN_HAND, new ItemStack(Items.FISHING_ROD));
-                                        angler.setInvisible(true);
-                                        final EntityTracker tracker = ((WorldServer) this.world).getEntityTracker();
-                                        tracker.sendToTracking(this, new SPacketPlayerListItem(SPacketPlayerListItem.Action.ADD_PLAYER, angler));
-                                        tracker.sendToTracking(this, new SPacketSpawnPlayer(angler));
-                                        tracker.sendToTracking(this, new SPacketPlayerListItem(SPacketPlayerListItem.Action.REMOVE_PLAYER, angler));
-                                        tracker.sendToTracking(this, new SPacketEntityMetadata(angler.getEntityId(), angler.getDataManager(), true));
-                                        // Position for loot to fly towards
-                                        angler.setLocationAndAngles(this.posX, this.posY, this.posZ, 0.0F, 35.0F);
-                                        this.world.spawnEntity(hook[0]);
-                                        break;
-                                    }
-                                }
-                            } else if (hook[0] != null) {
-                                if (hook[0].onGround && this.world.getBlockState(new BlockPos(hook[0])).getMaterial() != Material.WATER || hook[0].motionY == 0.0F) {
-                                    hook[0].handleHookRetraction();
-                                    final MinecraftServer server = this.world.getMinecraftServer();
-                                    if (server != null) {
-                                        server.getPlayerList().sendPacketToAllPlayers(new SPacketDestroyEntities(hook[0].getAngler().getEntityId()));
-                                    }
-                                    hook[0] = null;
-                                    this.rotationPitch = 0.0F;
-                                }
-                            }
-                        };
-                    }
-                    break;
-                // gonegold, gold model texture
-                // gotgains, muscle something
-                case "hasheart":
-                    if (this.world.isRemote) {
-                        this.update = () -> {
-                            if (this.rand.nextFloat() < 0.4F && this.ticksExisted % 5 == 0) {
-                                this.world.spawnParticle(
-                                    EnumParticleTypes.HEART,
-                                    this.posX + this.rand.nextFloat() * this.width * 2.0F - this.width,
-                                    this.posY + 0.5D + this.rand.nextFloat() * this.height,
-                                    this.posZ + this.rand.nextFloat() * this.width * 2.0F - this.width,
-                                    this.rand.nextGaussian() * 0.02D,
-                                    this.rand.nextGaussian() * 0.02D,
-                                    this.rand.nextGaussian() * 0.02D
-                                );
-                            }
-                        };
-                    }
-                    break;
-                case "hithuman":
-                    if (!this.world.isRemote) {
-                        this.update = () -> {
-                            if (this.ticksExisted % 7 == 0 && this.rand.nextFloat() < 0.333F) {
-                                final DamageSource damage = DamageSource.causeMobDamage(this);
-                                for (final EntityPlayerMP player : this.world.getEntitiesWithinAABB(EntityPlayerMP.class, this.getEntityBoundingBox().grow(1.0D))) {
-                                    player.attackEntityFrom(damage, 1.0F);
-                                }
-                            }
-                        };
-                    }
-                    break;
-                case "moremini":
-                    w *= 0.5F;
-                    h *= 0.5F;
-                    break;
-                case "sexysong":
-                    this.interact = p-> this.playSound(HatStandsSounds.ENTITY_HAT_STAND_SEXYSONG, 1.0F, 1.0F);
-                    break;
-                case "smallspy":
-                    if (this.world.isRemote) {
-                        this.update = () -> {
-                            final @Nullable EntityPlayer player = this.world.getClosestPlayerToEntity(this, 8.0D);
-                            if (player == null) {
-                                this.lookForward();
-                            } else {
-                                this.lookAt(player);
-                            }
-                        };
-                        this.update.run();
-                    }
-                    break;
-                // looklost, randomly look around
-                // livelazy, no base or neck
-                case "pwnpeeps":
-                    if (!this.world.isRemote) {
-                        this.interact = p -> {
-                            final MinecraftServer server = this.world.getMinecraftServer();
-                            if (server != null && server.getPlayerList().canSendCommands(p.getGameProfile())) {
-                                final EntityTracker tracker = ((WorldServer) this.world).getEntityTracker();
-                                //noinspection ConstantConditions
-                                tracker.sendToTracking(this, new SPacketOpenWindow(1, "minecraft:enchanting_table", null));
-                            }
-                        };
-                    }
-                    break;
-                case "powerpwn":
-                    if (!this.world.isRemote) {
-                        this.interact = p -> {
-                            final MinecraftServer server = this.world.getMinecraftServer();
-                            if (server != null && server.getPlayerList().canSendCommands(p.getGameProfile())) {
-                                final EntityTracker tracker = ((WorldServer) this.world).getEntityTracker();
-                                final ChunkPrimer primer = new ChunkPrimer();
-                                final BlockPos b = new BlockPos(this);
-                                primer.setBlockState(b.getX() & 0xF, b.getY(), b.getZ() & 0xF, Blocks.WATER.getDefaultState());
-                                primer.setBlockState(b.getX() & 0xF, b.getY(), MathHelper.abs((b.getZ() & 0xF) - 1), Blocks.RED_SHULKER_BOX.getDefaultState());
-                                primer.setBlockState(MathHelper.abs((b.getX() & 0xF) - 1), b.getY(), b.getZ() & 0xF, Blocks.RED_SHULKER_BOX.getDefaultState());
-                                tracker.sendToTracking(this, new SPacketChunkData(new Chunk(this.world, primer, b.getX() >> 4, b.getZ() >> 4), 0xFFFF));
-                            }
-                        };
-                    }
-                    break;
-            }
+        final Behavior behavior = this.behaviors.getOrDefault(CharMatcher.whitespace().removeFrom(name).toLowerCase(Locale.ROOT), Behavior.ABSENT);
+        if (!behavior.equals(this.behavior)) {
+            this.behavior.onEnd();
+            this.behavior = behavior;
+            this.behavior.onStart();
         }
-        this.setSize(w, h);
     }
 
     @Override
     public void setDead() {
         super.setDead();
-        MinecraftForge.EVENT_BUS.unregister(this.update);
-    }
-
-    private FakePlayer getAngler() {
-        return FakePlayerFactory.get((WorldServer) this.world, new GameProfile(MathHelper.getRandomUUID(new Random(this.getUniqueID().getLeastSignificantBits() ^ this.getUniqueID().getMostSignificantBits())), "Angler"));
+        this.behavior.onEnd();
     }
 
     private void lookAt(final Entity target) {
