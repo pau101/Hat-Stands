@@ -94,11 +94,8 @@ public class FreeFish implements Behavior {
 		} else if (this.hook != null) {
 			if (this.hook.onGround && e.world.getBlockState(new BlockPos(this.hook)).getMaterial() != Material.WATER || this.hook.motionY == 0.0F) {
 				this.hook.handleHookRetraction();
-				final MinecraftServer server = e.world.getMinecraftServer();
-				if (server != null) {
-					server.getPlayerList().sendPacketToAllPlayers(new SPacketDestroyEntities(this.hook.getAngler().getEntityId()));
-				}
 				this.hook = null;
+				this.removeAngler();
 				e.rotationPitch = 0.0F;
 			}
 		}
@@ -107,18 +104,26 @@ public class FreeFish implements Behavior {
 	private FakePlayer createAngler() {
 		if (this.angler == null) {
 			final UUID uuid = MathHelper.getRandomUUID(new Random(this.entity.getUniqueID().getLeastSignificantBits() ^ this.entity.getUniqueID().getMostSignificantBits()));
-			this.angler = new FakePlayer((WorldServer) this.entity.world, new GameProfile(uuid, "[Hat Stands] Angler"));
+			this.angler = new FakePlayer((WorldServer) this.entity.world, new GameProfile(uuid, "[Hat Stands]"));
 		}
 		return this.angler;
+	}
+
+	private void removeAngler() {
+		if (this.angler != null) {
+			this.angler.setDead();
+			final MinecraftServer server = this.entity.world.getMinecraftServer();
+			if (server != null) {
+				server.getPlayerList().sendPacketToAllPlayers(new SPacketDestroyEntities(this.angler.getEntityId()));
+			}
+			this.angler = null;
+		}
 	}
 
 	@Override
 	public void onEnd() {
 		MinecraftForge.EVENT_BUS.unregister(this);
-		if (this.angler != null) {
-			this.angler.setDead();
-			this.angler = null;
-		}
+		this.removeAngler();
 	}
 
 	@SubscribeEvent(priority = EventPriority.LOW)
