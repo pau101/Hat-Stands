@@ -74,7 +74,7 @@ public class FreeFish implements Behavior {
 							return entity != e && super.canBeHooked(entity);
 						}
 					};
-					final Vec3d offset = new Vec3d(0.0D, e.getEyeHeight(), 0.25D).rotateYaw(Mth.toRadians(e.rotationYaw)).add(new Vec3d(-0.35D, 0.45D - angler.getEyeHeight(), -0.8D));
+					final Vec3d offset = new Vec3d(0.0D, e.getEyeHeight(), 0.25D).rotateYaw(Mth.toRadians(-e.rotationYaw)).add(new Vec3d(-0.35D, 0.45D - angler.getEyeHeight(), -0.8D));
 					// Position client for line to start at center of hat stand face
 					angler.setLocationAndAngles(e.posX + offset.x, e.posY + offset.y, e.posZ + offset.z, 0.0F, 35.0F);
 					angler.setPrimaryHand(EnumHandSide.RIGHT);
