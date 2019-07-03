@@ -390,7 +390,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     @Override
     public void notifyDataManagerChange(final DataParameter<?> key) {
         super.notifyDataManagerChange(key);
-        // data parameter is private so we serializer type
+        // data parameter is private so we use serializer type
         if (key.getSerializer() == DataSerializers.STRING) {
             this.setBehavior(this.getCustomNameTag());
         }
