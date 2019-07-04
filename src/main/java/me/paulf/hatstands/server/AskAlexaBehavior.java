@@ -62,7 +62,7 @@ import java.util.regex.Pattern;
 import static java.time.temporal.ChronoField.DAY_OF_MONTH;
 import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
 
-class AlexaBehavior implements Behavior {
+public class AskAlexaBehavior implements Behavior {
 	private final HatStandEntity entity;
 
 	private final Splitter argSplitter = Splitter.on(Pattern.compile(" |(?=[!,.;?])")).omitEmptyStrings();
@@ -71,7 +71,7 @@ class AlexaBehavior implements Behavior {
 
 	private int remaining = 0;
 
-	AlexaBehavior(final HatStandEntity entity) {
+	AskAlexaBehavior(final HatStandEntity entity) {
 		this.entity = entity;
 	}
 
@@ -299,7 +299,7 @@ class AlexaBehavior implements Behavior {
 							if (!e.isEntityAlive()) {
 								return;
 							}
-							AlexaBehavior.this.remaining = 1;
+							AskAlexaBehavior.this.remaining = 1;
 							if (result == null || result.isEmpty()) {
 								e.typeMessage(SOMETHING_WENT_WRONG);
 								return;
@@ -329,7 +329,7 @@ class AlexaBehavior implements Behavior {
 						@Override
 						public void onFailure(final Throwable t) {
 							if (e.isEntityAlive()) {
-								AlexaBehavior.this.remaining = Math.abs(AlexaBehavior.this.remaining);
+								AskAlexaBehavior.this.remaining = Math.abs(AskAlexaBehavior.this.remaining);
 								e.typeMessage(SOMETHING_WENT_WRONG);
 							}
 						}

@@ -78,7 +78,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     private final NonNullList<ItemStack> armorItems;
 
     private final ImmutableMap<String, Behavior> behaviors = ImmutableMap.<String, Behavior>builder()
-        .put("askalexa", this.onServer(AlexaBehavior::new))
+        .put("askalexa", this.onServer(AskAlexaBehavior::new))
         .put("allarmed", this.onServer(e -> new Behavior() {
             @Override
             public void onUpdate() {
