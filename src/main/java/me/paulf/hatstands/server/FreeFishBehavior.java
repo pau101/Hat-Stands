@@ -5,12 +5,14 @@ import me.paulf.hatstands.util.Mth;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityTracker;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.projectile.EntityFishHook;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.NetHandlerPlayServer;
+import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.SPacketDestroyEntities;
 import net.minecraft.network.play.server.SPacketEntityMetadata;
 import net.minecraft.network.play.server.SPacketPlayerListItem;
@@ -27,10 +29,13 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.entity.player.ItemFishedEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
+import java.util.Collections;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 public class FreeFishBehavior implements Behavior {
@@ -74,25 +79,24 @@ public class FreeFishBehavior implements Behavior {
 							return entity != e && super.canBeHooked(entity);
 						}
 					};
-					final Vec3d offset = new Vec3d(0.0D, e.getEyeHeight(), 0.25D).rotateYaw(Mth.toRadians(-e.rotationYaw)).add(new Vec3d(-0.35D, 0.45D - angler.getEyeHeight(), -0.8D));
 					// Position client for line to start at center of hat stand face
-					angler.setLocationAndAngles(e.posX + offset.x, e.posY + offset.y, e.posZ + offset.z, 0.0F, 35.0F);
+					final Vec3d offset = new Vec3d(0.0D, e.getEyeHeight(), 0.25D).rotateYaw(Mth.toRadians(-e.rotationYaw));
+					angler.setLocationAndAngles(e.posX + offset.x - 0.35D, e.posY + offset.y + 0.45D - angler.getEyeHeight(), e.posZ + offset.z - 0.8D, 0.0F, 35.0F);
 					angler.setPrimaryHand(EnumHandSide.RIGHT);
 					angler.setHeldItem(EnumHand.MAIN_HAND, new ItemStack(Items.FISHING_ROD));
 					angler.setInvisible(true);
-					final EntityTracker tracker = ((WorldServer) e.world).getEntityTracker();
-					tracker.sendToTracking(e, new SPacketPlayerListItem(SPacketPlayerListItem.Action.ADD_PLAYER, angler));
-					tracker.sendToTracking(e, new SPacketSpawnPlayer(angler));
-					tracker.sendToTracking(e, new SPacketPlayerListItem(SPacketPlayerListItem.Action.REMOVE_PLAYER, angler));
-					tracker.sendToTracking(e, new SPacketEntityMetadata(angler.getEntityId(), angler.getDataManager(), true));
-					// Position for loot to fly towards
-					angler.setLocationAndAngles(e.posX, e.posY, e.posZ, 0.0F, 35.0F);
+					//noinspection unchecked
+					this.sendAngler(angler, (Set<EntityPlayerMP>) ((WorldServer) e.world).getEntityTracker().getTrackingPlayers(e));
 					e.world.spawnEntity(this.hook);
 					break;
 				}
 			}
 		} else if (this.hook != null) {
 			if (this.hook.onGround && e.world.getBlockState(new BlockPos(this.hook)).getMaterial() != Material.WATER || this.hook.motionY == 0.0F) {
+				// Position for loot to fly towards
+				if (this.angler != null) {
+					this.angler.setLocationAndAngles(e.posX, e.posY, e.posZ, 0.0F, 35.0F);
+				}
 				this.hook.handleHookRetraction();
 				this.hook = null;
 				this.removeAngler();
@@ -120,6 +124,20 @@ public class FreeFishBehavior implements Behavior {
 		}
 	}
 
+	private void sendAngler(final FakePlayer angler, final Iterable<? extends EntityPlayerMP> players) {
+		final Packet<?> add = new SPacketPlayerListItem(SPacketPlayerListItem.Action.ADD_PLAYER, angler);
+		final Packet<?> spawn = new SPacketSpawnPlayer(angler);
+		final Packet<?> remove = new SPacketPlayerListItem(SPacketPlayerListItem.Action.REMOVE_PLAYER, angler);
+		final Packet<?> metadata = new SPacketEntityMetadata(angler.getEntityId(), angler.getDataManager(), true);
+		for (final EntityPlayerMP player : players) {
+			final NetHandlerPlayServer conn = player.connection;
+			conn.sendPacket(add);
+			conn.sendPacket(spawn);
+			conn.sendPacket(remove);
+			conn.sendPacket(metadata);
+		}
+	}
+
 	@Override
 	public void onEnd() {
 		this.entity.lookForward();
@@ -128,7 +146,7 @@ public class FreeFishBehavior implements Behavior {
 	}
 
 	@SubscribeEvent(priority = EventPriority.LOW)
-	public void onItemFish(final ItemFishedEvent event) {
+	public void onFishItem(final ItemFishedEvent event) {
 		final EntityFishHook hook = event.getHookEntity();
 		final EntityPlayer angler = hook.getAngler();
 		if (angler == this.angler) {
@@ -146,6 +164,20 @@ public class FreeFishBehavior implements Behavior {
 				world.spawnEntity(item);
 			}
 			event.setCanceled(true);
+		}
+	}
+
+	@SubscribeEvent
+	public void onTrackStart(final PlayerEvent.StartTracking event) {
+		if (this.angler != null && event.getTarget() == this.entity) {
+			this.sendAngler(this.angler, Collections.singleton((EntityPlayerMP) event.getEntityPlayer()));
+		}
+	}
+
+	@SubscribeEvent
+	public void onTrackStop(final PlayerEvent.StopTracking event) {
+		if (this.angler != null && event.getTarget() == this.entity) {
+			((EntityPlayerMP) event.getEntityPlayer()).connection.sendPacket(new SPacketDestroyEntities(this.angler.getEntityId()));
 		}
 	}
 }
