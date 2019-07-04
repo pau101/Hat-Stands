@@ -277,11 +277,6 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
 		}))
         .put("smallspy", this.onClient(e -> new Behavior() {
             @Override
-            public void onName(final EntityPlayer player) {
-                this.onUpdate();
-            }
-
-            @Override
             public void onUpdate() {
                 final @Nullable EntityPlayer player = e.world.getClosestPlayerToEntity(e, 8.0D);
                 if (player == null) {
