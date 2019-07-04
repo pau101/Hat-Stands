@@ -178,7 +178,7 @@ public class AskAlexaBehavior implements Behavior {
 						world.playEvent(RECORD_EVENT, candidates.first(), Item.getIdFromItem(item));
 					}
 				} else {
-					e.typeMessage(String.format("I can't find the song '%s.'", second));
+					e.typeMessage(String.format("I can't find the song '%s'", second));
 				}
 			} else if ("stop".equals(first)) {
 				final SortedSet<BlockPos> candidates = this.findJukebox();
