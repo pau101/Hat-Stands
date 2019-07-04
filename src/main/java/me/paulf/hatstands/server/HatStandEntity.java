@@ -216,65 +216,65 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             }
         })
         .put("sexysong", this.onServer(e -> new Behavior() {
-        	boolean powered = false;
-        	BlockPos pos = BlockPos.ORIGIN;
+            boolean powered = false;
+            BlockPos pos = BlockPos.ORIGIN;
 
-			void play() {
-				e.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG, 1.0F, 1.0F);
-			}
+            void play() {
+                e.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG, 1.0F, 1.0F);
+            }
 
             @Override
             public void onName(final EntityPlayer player) {
                 this.play();
             }
 
-			@Override
-			public void onStart() {
-				MinecraftForge.EVENT_BUS.register(this);
-			}
+            @Override
+            public void onStart() {
+                MinecraftForge.EVENT_BUS.register(this);
+            }
 
-			@Override
-			public void onEnd() {
-				MinecraftForge.EVENT_BUS.unregister(this);
-			}
+            @Override
+            public void onEnd() {
+                MinecraftForge.EVENT_BUS.unregister(this);
+            }
 
-			@SubscribeEvent(priority = EventPriority.LOW)
-			public void onNeighborNotify(final BlockEvent.NeighborNotifyEvent event) {
-				if (event.getState().isNormalCube()) {
-					final World world = event.getWorld();
-					final BlockPos pos = event.getPos();
-					// new BlockPos(e).equals(pos.up())
-					if (e.posX >= pos.getX() && e.posX < pos.getX() + 1.0D &&
-						e.posZ >= pos.getZ() && e.posZ < pos.getZ() + 1.0D &&
-						e.posY >= pos.getY() + 1.0D && e.posY < pos.getY() + 2.0D) {
-						final boolean powered = world.isBlockPowered(pos);
+            @SubscribeEvent(priority = EventPriority.LOW)
+            public void onNeighborNotify(final BlockEvent.NeighborNotifyEvent event) {
+                if (event.getState().isNormalCube()) {
+                    final World world = event.getWorld();
+                    final BlockPos pos = event.getPos();
+                    // new BlockPos(e).equals(pos.up())
+                    if (e.posX >= pos.getX() && e.posX < pos.getX() + 1.0D &&
+                        e.posZ >= pos.getZ() && e.posZ < pos.getZ() + 1.0D &&
+                        e.posY >= pos.getY() + 1.0D && e.posY < pos.getY() + 2.0D) {
+                        final boolean powered = world.isBlockPowered(pos);
                         if (powered && (!this.powered || !this.pos.equals(pos))) {
                             this.play();
                         }
-						this.powered = powered;
-						this.pos = pos.toImmutable();
-					}
-				}
-			}
+                        this.powered = powered;
+                        this.pos = pos.toImmutable();
+                    }
+                }
+            }
 
-			@Override
-			public void onSave(final NBTTagCompound compound) {
-				compound.setBoolean("Powered", this.powered);
-				compound.setInteger("PoweredX", this.pos.getX());
-				compound.setInteger("PoweredY", this.pos.getY());
-				compound.setInteger("PoweredZ", this.pos.getZ());
-			}
+            @Override
+            public void onSave(final NBTTagCompound compound) {
+                compound.setBoolean("Powered", this.powered);
+                compound.setInteger("PoweredX", this.pos.getX());
+                compound.setInteger("PoweredY", this.pos.getY());
+                compound.setInteger("PoweredZ", this.pos.getZ());
+            }
 
-			@Override
-			public void onLoad(final NBTTagCompound compound) {
-				this.powered = compound.getBoolean("Powered");
-				this.pos = new BlockPos(
-				    compound.getInteger("PoweredX"),
+            @Override
+            public void onLoad(final NBTTagCompound compound) {
+                this.powered = compound.getBoolean("Powered");
+                this.pos = new BlockPos(
+                    compound.getInteger("PoweredX"),
                     compound.getInteger("PoweredY"),
                     compound.getInteger("PoweredZ")
                 );
-			}
-		}))
+            }
+        }))
         .put("smallspy", this.onClient(e -> new Behavior() {
             @Override
             public void onUpdate() {
@@ -355,25 +355,25 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     @Override
     public ItemStack getItemStackFromSlot(final EntityEquipmentSlot slot) {
         switch (slot.getSlotType()) {
-        case HAND:
-            return this.handItems.get(slot.getIndex());
-        case ARMOR:
-            return this.armorItems.get(slot.getIndex());
-        default:
-            return ItemStack.EMPTY;
+            case HAND:
+                return this.handItems.get(slot.getIndex());
+            case ARMOR:
+                return this.armorItems.get(slot.getIndex());
+            default:
+                return ItemStack.EMPTY;
         }
     }
 
     @Override
     public void setItemStackToSlot(final EntityEquipmentSlot slot, final ItemStack stack) {
         switch (slot.getSlotType()) {
-        case HAND:
-            this.playEquipSound(stack);
-            this.handItems.set(slot.getIndex(), stack);
-            break;
-        case ARMOR:
-            this.playEquipSound(stack);
-            this.armorItems.set(slot.getIndex(), stack);
+            case HAND:
+                this.playEquipSound(stack);
+                this.handItems.set(slot.getIndex(), stack);
+                break;
+            case ARMOR:
+                this.playEquipSound(stack);
+                this.armorItems.set(slot.getIndex(), stack);
         }
     }
 
@@ -469,13 +469,13 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     public boolean onName(final EntityPlayer player, final ItemStack stack) {
-		if (stack.hasDisplayName()) {
-			this.setCustomNameTag(stack.getDisplayName());
-			this.behavior.onName(player);
-			return true;
-		}
-		return false;
-	}
+        if (stack.hasDisplayName()) {
+            this.setCustomNameTag(stack.getDisplayName());
+            this.behavior.onName(player);
+            return true;
+        }
+        return false;
+    }
 
     private Behavior onServer(final Function<? super HatStandEntity, Behavior> behavior) {
         return this.world.isRemote ? Behavior.ABSENT : behavior.apply(this);
@@ -504,7 +504,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         this.rotationYawHead = this.rotationYaw;
     }
 
-   void lookAt(final Entity target) {
+    void lookAt(final Entity target) {
         final double dx = target.posX - this.posX;
         final double dy = (target.posY + target.getEyeHeight()) - (this.posY + this.getEyeHeight());
         final double dz = target.posZ - this.posZ;
