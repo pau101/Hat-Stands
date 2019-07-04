@@ -63,6 +63,12 @@ import static java.time.temporal.ChronoField.DAY_OF_MONTH;
 import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
 
 public class AskAlexaBehavior implements Behavior {
+	private static final DateTimeFormatter NEWS_DATE_FORMATTER = new DateTimeFormatterBuilder()
+		.appendText(MONTH_OF_YEAR)
+		.appendLiteral(' ')
+		.appendText(DAY_OF_MONTH)
+		.toFormatter(Locale.US);
+
 	private final HatStandEntity entity;
 
 	private final Splitter argSplitter = Splitter.on(Pattern.compile(" |(?=[!,.;?])")).omitEmptyStrings();
@@ -307,12 +313,7 @@ public class AskAlexaBehavior implements Behavior {
 							e.typeMessage("Here's what I found:");
 							for (final ListIterator<News.Article> it = result.listIterator(result.size()); it.hasPrevious(); ) {
 								final News.Article article = it.previous();
-								final DateTimeFormatter formatter = new DateTimeFormatterBuilder()
-									.appendText(MONTH_OF_YEAR)
-									.appendLiteral(' ')
-									.appendText(DAY_OF_MONTH)
-									.toFormatter(Locale.US);
-								e.emitChat(new TextComponentString(String.format("%s: ", article.getDate().format(formatter)))
+								e.emitChat(new TextComponentString(String.format("%s: ", article.getDate().format(NEWS_DATE_FORMATTER)))
 									.setStyle(new Style().setColor(TextFormatting.GRAY))
 									.appendSibling(new TextComponentString(article.getTitle()).setStyle(new Style()
 										.setColor(TextFormatting.BLUE)
