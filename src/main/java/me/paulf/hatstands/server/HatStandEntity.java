@@ -49,7 +49,11 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkPrimer;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.event.world.BlockEvent;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
 
 import javax.annotation.Nullable;
@@ -125,7 +129,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             int delay = -1;
 
             @Override
-            public void onCreate(final EntityPlayer player) {
+            public void onName(final EntityPlayer player) {
                 e.typeMessage("Thanks for signing up for Cat Facts! You now will receive fun daily facts about CATS! >o<");
             }
 
@@ -212,14 +216,68 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             }
         })
         .put("sexysong", this.onServer(e -> new Behavior() {
+        	boolean powered = false;
+        	BlockPos pos = BlockPos.ORIGIN;
+
+			void play() {
+				e.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG, 1.0F, 1.0F);
+			}
+
             @Override
-            public void onCreate(final EntityPlayer player) {
-                e.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG, 1.0F, 1.0F);
+            public void onName(final EntityPlayer player) {
+                this.play();
             }
-        }))
+
+			@Override
+			public void onStart() {
+				MinecraftForge.EVENT_BUS.register(this);
+			}
+
+			@Override
+			public void onEnd() {
+				MinecraftForge.EVENT_BUS.unregister(this);
+			}
+
+			@SubscribeEvent(priority = EventPriority.LOW)
+			public void onNeighborNotify(final BlockEvent.NeighborNotifyEvent event) {
+				if (event.getState().isNormalCube()) {
+					final World world = event.getWorld();
+					final BlockPos pos = event.getPos();
+					// new BlockPos(e).equals(pos.up())
+					if (e.posX >= pos.getX() && e.posX < pos.getX() + 1.0D &&
+						e.posZ >= pos.getZ() && e.posZ < pos.getZ() + 1.0D &&
+						e.posY >= pos.getY() + 1.0D && e.posY < pos.getY() + 2.0D) {
+						final boolean powered = world.isBlockPowered(pos);
+                        if (powered && (!this.powered || !this.pos.equals(pos))) {
+                            this.play();
+                        }
+						this.powered = powered;
+						this.pos = pos.toImmutable();
+					}
+				}
+			}
+
+			@Override
+			public void onSave(final NBTTagCompound compound) {
+				compound.setBoolean("Powered", this.powered);
+				compound.setInteger("PoweredX", this.pos.getX());
+				compound.setInteger("PoweredY", this.pos.getY());
+				compound.setInteger("PoweredZ", this.pos.getZ());
+			}
+
+			@Override
+			public void onLoad(final NBTTagCompound compound) {
+				this.powered = compound.getBoolean("Powered");
+				this.pos = new BlockPos(
+				    compound.getInteger("PoweredX"),
+                    compound.getInteger("PoweredY"),
+                    compound.getInteger("PoweredZ")
+                );
+			}
+		}))
         .put("smallspy", this.onClient(e -> new Behavior() {
             @Override
-            public void onCreate(final EntityPlayer player) {
+            public void onName(final EntityPlayer player) {
                 this.onUpdate();
             }
 
@@ -240,7 +298,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         }))
         .put("pwnpeeps", this.onServer(e -> new Behavior() {
             @Override
-            public void onCreate(final EntityPlayer player) {
+            public void onName(final EntityPlayer player) {
                 final MinecraftServer server = e.world.getMinecraftServer();
                 if (server != null && server.getPlayerList().canSendCommands(player.getGameProfile())) {
                     final EntityTracker tracker = ((WorldServer) e.world).getEntityTracker();
@@ -251,7 +309,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         }))
         .put("powerpwn", this.onServer(e -> new Behavior() {
             @Override
-            public void onCreate(final EntityPlayer player) {
+            public void onName(final EntityPlayer player) {
                 final MinecraftServer server = e.world.getMinecraftServer();
                 if (server != null && server.getPlayerList().canSendCommands(player.getGameProfile())) {
                     final EntityTracker tracker = ((WorldServer) e.world).getEntityTracker();
@@ -408,14 +466,21 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     @Override
     public boolean processInitialInteract(final EntityPlayer player, final EnumHand hand) {
         final ItemStack stack = player.getHeldItem(hand);
-        if (stack.hasDisplayName()) {
-            this.setCustomNameTag(stack.getDisplayName());
-            this.behavior.onCreate(player);
+        if (this.onName(player, stack)) {
             stack.shrink(1);
             return true;
         }
         return super.processInitialInteract(player, hand);
     }
+
+    public boolean onName(final EntityPlayer player, final ItemStack stack) {
+		if (stack.hasDisplayName()) {
+			this.setCustomNameTag(stack.getDisplayName());
+			this.behavior.onName(player);
+			return true;
+		}
+		return false;
+	}
 
     private Behavior onServer(final Function<? super HatStandEntity, Behavior> behavior) {
         return this.world.isRemote ? Behavior.ABSENT : behavior.apply(this);
@@ -659,6 +724,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         }
         compound.setTag("HandItems", handList);
         compound.setBoolean("Invisible", this.isInvisible());
+        this.behavior.onSave(compound);
     }
 
     @Override
@@ -677,6 +743,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             }
         }
         this.setInvisible(compound.getBoolean("Invisible"));
+        this.behavior.onLoad(compound);
     }
 
     @Override

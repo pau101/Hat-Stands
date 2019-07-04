@@ -1,7 +1,6 @@
 package me.paulf.hatstands.server;
 
 import me.paulf.hatstands.HatStands;
-import me.paulf.hatstands.server.HatStandEntity;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.creativetab.CreativeTabs;
@@ -47,10 +46,10 @@ public final class HatStandItem extends Item {
                 yaw = facing.getHorizontalAngle();
             }
             final HatStandEntity stand = HatStandEntity.create(world, placePos, yaw);
-            if (stack.hasDisplayName()) {
-                stand.setCustomNameTag(stack.getDisplayName());
-            }
             ItemMonsterPlacer.applyItemEntityDataToEntity(world, player, stack, stand);
+            if (!stand.hasCustomName()) {
+                stand.onName(player, stack);
+            }
             world.spawnEntity(stand);
             world.playSound(null, placePos, HatStands.SoundEvents.ENTITY_HAT_STAND_PLACE, stand.getSoundCategory(), 0.75F, 0.8F);
         }
