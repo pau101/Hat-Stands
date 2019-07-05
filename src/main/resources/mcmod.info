@@ -5,6 +5,7 @@
     "description": "Hat Stands, as simple as that.",
     "url": "https://minecraft.curseforge.com/projects/hat-stands",
     "authorList": [ "pau101" ],
+	"logoFile": "logo.png",
     "useDependencyInformation": true,
     "dependencies": [ "forge@[${forgeVersion},)" ],
     "requiredMods": [ "forge@[${forgeVersion},)" ]
