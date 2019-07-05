@@ -107,16 +107,12 @@ public class AskAlexaBehavior implements Behavior {
                 this.requests.poll();
             }
         }
-        if (this.remaining != 0) {
-            if (this.remaining > 0) {
-                this.remaining--;
-                if (this.remaining == 0) {
-                    final EntityTracker tracker = ((WorldServer) this.entity.world).getEntityTracker();
-                    tracker.sendToTracking(this.entity, new SPacketEntityEquipment(this.entity.getEntityId(), EntityEquipmentSlot.HEAD, this.entity.getItemStackFromSlot(EntityEquipmentSlot.HEAD)));
-                    this.entity.playSound(SoundEvents.BLOCK_NOTE_CHIME, 0.125F, 0.0F);
-                }
-            } else if (this.remaining < -1) {
-                this.remaining++;
+        if (this.remaining > 0) {
+            this.remaining--;
+            if (this.remaining == 0) {
+                final EntityTracker tracker = ((WorldServer) this.entity.world).getEntityTracker();
+                tracker.sendToTracking(this.entity, new SPacketEntityEquipment(this.entity.getEntityId(), EntityEquipmentSlot.HEAD, this.entity.getItemStackFromSlot(EntityEquipmentSlot.HEAD)));
+                this.entity.playSound(SoundEvents.BLOCK_NOTE_CHIME, 0.125F, 0.0F);
             }
         }
     }
