@@ -305,7 +305,7 @@ public class AskAlexaBehavior implements Behavior {
                             if (!e.isEntityAlive()) {
                                 return;
                             }
-                            AskAlexaBehavior.this.remaining = 1;
+                            AskAlexaBehavior.this.remaining = Math.abs(AskAlexaBehavior.this.remaining);
                             if (result == null || result.isEmpty()) {
                                 e.typeMessage(SOMETHING_WENT_WRONG);
                                 return;
