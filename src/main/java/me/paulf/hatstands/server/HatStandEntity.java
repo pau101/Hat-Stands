@@ -332,7 +332,7 @@ public final class HatStandEntity extends LivingEntity {
 
     @Override
     public float getStandingEyeHeight(final Pose pose, final EntitySize size) {
-        return 0.65F * size.height;
+        return 0.6F * size.height;
     }
 
     @Override
