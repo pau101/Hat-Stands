@@ -3,58 +3,60 @@ package me.paulf.hatstands.server;
 import com.google.common.base.CharMatcher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import io.netty.buffer.ByteBuf;
 import me.paulf.hatstands.HatStands;
 import me.paulf.hatstands.util.Mth;
 import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.EntityTracker;
-import net.minecraft.entity.MoverType;
-import net.minecraft.entity.effect.EntityLightningBolt;
-import net.minecraft.entity.monster.EntityMob;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.entity.projectile.EntityEgg;
-import net.minecraft.entity.projectile.EntityTippedArrow;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.entity.EntitySize;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.MobEntity;
+import net.minecraft.entity.Pose;
+import net.minecraft.entity.effect.LightningBoltEntity;
+import net.minecraft.entity.item.ArmorStandEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.entity.projectile.ArrowEntity;
+import net.minecraft.entity.projectile.EggEntity;
+import net.minecraft.inventory.EquipmentSlotType;
+import net.minecraft.inventory.container.ContainerType;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
+import net.minecraft.item.Items;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraft.network.IPacket;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.play.server.SPacketChunkData;
-import net.minecraft.network.play.server.SPacketOpenWindow;
+import net.minecraft.network.datasync.EntityDataManager;
+import net.minecraft.network.play.server.SOpenWindowPacket;
+import net.minecraft.particles.BlockParticleData;
+import net.minecraft.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.ActionResultType;
 import net.minecraft.util.DamageSource;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.EnumHandSide;
-import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.Hand;
+import net.minecraft.util.HandSide;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.SoundEvent;
+import net.minecraft.util.SoundEvents;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraft.util.text.TextComponentTranslation;
+import net.minecraft.util.text.StringTextComponent;
+import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.ChunkPrimer;
+import net.minecraft.world.server.ServerChunkProvider;
+import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.event.world.BlockEvent;
-import net.minecraftforge.fml.common.eventhandler.EventPriority;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.network.NetworkHooks;
 
 import javax.annotation.Nullable;
 import java.io.BufferedReader;
@@ -64,7 +66,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 
-public final class HatStandEntity extends EntityLivingBase implements IEntityAdditionalSpawnData {
+public final class HatStandEntity extends LivingEntity {
     private static final byte PUNCH_ID = 32;
 
     private static final float WIDTH = 9.0F / 16.0F;
@@ -83,20 +85,20 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             @Override
             public void onUpdate() {
                 if (e.ticksExisted % 23 == 0) {
-                    final List<EntityMob> entities = e.world.getEntitiesWithinAABB(
-                        EntityMob.class,
-                        e.getEntityBoundingBox().grow(8.0D, 4.0D, 8.0D),
-                        e -> e != null && e.isEntityAlive() && !e.isOnSameTeam(e) && e.canEntityBeSeen(e)
+                    final List<MobEntity> entities = e.world.getEntitiesWithinAABB(
+                        MobEntity.class,
+                        e.getBoundingBox().grow(8.0D, 4.0D, 8.0D),
+                        e -> e != null && e.isAlive() && !e.isOnSameTeam(e) && e.canEntityBeSeen(e)
                     );
                     if (entities.isEmpty()) {
                         e.lookForward();
                     } else {
-                        final EntityMob mob = entities.get(0);
+                        final MobEntity mob = entities.get(0);
                         e.lookAt(mob);
-                        final EntityTippedArrow arrow = new EntityTippedArrow(e.world, e);
+                        final ArrowEntity arrow = new ArrowEntity(e.world, e);
                         arrow.shoot(e, e.rotationPitch, e.rotationYawHead, 0.0F, 3.0F, 1.0F);
                         arrow.setIsCritical(true);
-                        e.world.spawnEntity(arrow);
+                        e.world.addEntity(arrow);
                         e.world.playSound(
                             null,
                             e.posX, e.posY, e.posZ,
@@ -129,7 +131,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             int delay = -1;
 
             @Override
-            public void onName(final EntityPlayer player) {
+            public void onName(final PlayerEntity player) {
                 e.typeMessage("Thanks for signing up for Cat Facts! You now will receive fun daily facts about CATS! >o<");
             }
 
@@ -167,10 +169,10 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
                 if (e.ticksExisted % 151 == 0 && e.rand.nextFloat() < 0.25F) {
                     e.rotationPitch = 15.0F;
                     e.playSound(SoundEvents.ENTITY_EGG_THROW, 0.5F, 0.4F / (e.rand.nextFloat() * 0.4F + 0.8F));
-                    final EntityEgg egg = new EntityEgg(e.world, e);
-                    egg.ignoreEntity = e;
+                    final EggEntity egg = new EggEntity(e.world, e);
+                    // egg.ignoreEntity = e; FIXME
                     egg.shoot(e, e.rotationPitch, e.rotationYaw, 0.0F, 1.5F, 1.0F);
-                    e.world.spawnEntity(egg);
+                    e.world.addEntity(egg);
                 } else if (e.ticksExisted % 13 == 5) {
                     e.rotationPitch = 0.0F;
                 }
@@ -181,11 +183,11 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             @Override
             public void onUpdate() {
                 if (e.ticksExisted % 5 == 0 && e.rand.nextFloat() < 0.4F) {
-                    e.world.spawnParticle(
-                        EnumParticleTypes.HEART,
-                        e.posX + e.rand.nextFloat() * e.width * 2.0F - e.width,
-                        e.posY + 0.5D + e.rand.nextFloat() * e.height,
-                        e.posZ + e.rand.nextFloat() * e.width * 2.0F - e.width,
+                    e.world.addParticle(
+                        ParticleTypes.HEART,
+                        e.posX + e.rand.nextFloat() * e.getWidth() * 2.0F - e.getWidth(),
+                        e.posY + 0.5D + e.rand.nextFloat() * e.getHeight(),
+                        e.posZ + e.rand.nextFloat() * e.getWidth() * 2.0F - e.getWidth(),
                         e.rand.nextGaussian() * 0.02D,
                         e.rand.nextGaussian() * 0.02D,
                         e.rand.nextGaussian() * 0.02D
@@ -198,7 +200,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             public void onUpdate() {
                 if (e.ticksExisted % 7 == 0 && e.rand.nextFloat() < 0.333F) {
                     final DamageSource damage = DamageSource.causeMobDamage(e);
-                    for (final EntityPlayerMP player : e.world.getEntitiesWithinAABB(EntityPlayerMP.class, e.getEntityBoundingBox().grow(1.0D))) {
+                    for (final ServerPlayerEntity player : e.world.getEntitiesWithinAABB(ServerPlayerEntity.class, e.getBoundingBox().grow(1.0D))) {
                         player.attackEntityFrom(damage, 1.0F);
                     }
                 }
@@ -217,14 +219,14 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         })
         .put("sexysong", this.onServer(e -> new Behavior() {
             boolean powered = false;
-            BlockPos pos = BlockPos.ORIGIN;
+            BlockPos pos = BlockPos.ZERO;
 
             void play() {
-                e.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG, 1.0F, 1.0F);
+                e.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG.orElseThrow(IllegalStateException::new), 1.0F, 1.0F);
             }
 
             @Override
-            public void onName(final EntityPlayer player) {
+            public void onName(final PlayerEntity player) {
                 this.play();
             }
 
@@ -240,8 +242,8 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
 
             @SubscribeEvent(priority = EventPriority.LOW)
             public void onNeighborNotify(final BlockEvent.NeighborNotifyEvent event) {
-                if (event.getState().isNormalCube()) {
-                    final World world = event.getWorld();
+                if (event.getState().isNormalCube(event.getWorld(), event.getPos())) {
+                    final World world = (World) event.getWorld();
                     final BlockPos pos = event.getPos();
                     // new BlockPos(e).equals(pos.up())
                     if (e.posX >= pos.getX() && e.posX < pos.getX() + 1.0D &&
@@ -258,27 +260,27 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             }
 
             @Override
-            public void onSave(final NBTTagCompound compound) {
-                compound.setBoolean("Powered", this.powered);
-                compound.setInteger("PoweredX", this.pos.getX());
-                compound.setInteger("PoweredY", this.pos.getY());
-                compound.setInteger("PoweredZ", this.pos.getZ());
+            public void onSave(final CompoundNBT compound) {
+                compound.putBoolean("Powered", this.powered);
+                compound.putInt("PoweredX", this.pos.getX());
+                compound.putInt("PoweredY", this.pos.getY());
+                compound.putInt("PoweredZ", this.pos.getZ());
             }
 
             @Override
-            public void onLoad(final NBTTagCompound compound) {
+            public void onLoad(final CompoundNBT compound) {
                 this.powered = compound.getBoolean("Powered");
                 this.pos = new BlockPos(
-                    compound.getInteger("PoweredX"),
-                    compound.getInteger("PoweredY"),
-                    compound.getInteger("PoweredZ")
+                    compound.getInt("PoweredX"),
+                    compound.getInt("PoweredY"),
+                    compound.getInt("PoweredZ")
                 );
             }
         }))
         .put("smallspy", this.onClient(e -> new Behavior() {
             @Override
             public void onUpdate() {
-                final @Nullable EntityPlayer player = e.world.getClosestPlayerToEntity(e, 8.0D);
+                @Nullable final PlayerEntity player = e.world.getClosestPlayer(e, 8.0D);
                 if (player == null) {
                     e.lookForward();
                 } else {
@@ -293,27 +295,12 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         }))
         .put("pwnpeeps", this.onServer(e -> new Behavior() {
             @Override
-            public void onName(final EntityPlayer player) {
-                final MinecraftServer server = e.world.getMinecraftServer();
+            public void onName(final PlayerEntity player) {
+                final MinecraftServer server = e.world.getServer();
                 if (server != null && server.getPlayerList().canSendCommands(player.getGameProfile())) {
-                    final EntityTracker tracker = ((WorldServer) e.world).getEntityTracker();
+                    final ServerChunkProvider tracker = ((ServerWorld) e.world).getChunkProvider();
                     //noinspection ConstantConditions
-                    tracker.sendToTracking(e, new SPacketOpenWindow(1, "minecraft:enchanting_table", null));
-                }
-            }
-        }))
-        .put("powerpwn", this.onServer(e -> new Behavior() {
-            @Override
-            public void onName(final EntityPlayer player) {
-                final MinecraftServer server = e.world.getMinecraftServer();
-                if (server != null && server.getPlayerList().canSendCommands(player.getGameProfile())) {
-                    final EntityTracker tracker = ((WorldServer) e.world).getEntityTracker();
-                    final ChunkPrimer primer = new ChunkPrimer();
-                    final BlockPos b = new BlockPos(e);
-                    primer.setBlockState(b.getX() & 0xF, b.getY(), b.getZ() & 0xF, Blocks.WATER.getDefaultState());
-                    primer.setBlockState(b.getX() & 0xF, b.getY(), MathHelper.abs((b.getZ() & 0xF) - 1), Blocks.RED_SHULKER_BOX.getDefaultState());
-                    primer.setBlockState(MathHelper.abs((b.getX() & 0xF) - 1), b.getY(), b.getZ() & 0xF, Blocks.RED_SHULKER_BOX.getDefaultState());
-                    tracker.sendToTracking(e, new SPacketChunkData(new Chunk(e.world, primer, b.getX() >> 4, b.getZ() >> 4), 0xFFFF));
+                    tracker.sendToAllTracking(e, new SOpenWindowPacket(1, ContainerType.ENCHANTMENT, null));
                 }
             }
         }))
@@ -321,25 +308,24 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
 
     private Behavior behavior = Behavior.ABSENT;
 
-    public HatStandEntity(final World world) {
-        super(world);
+    public HatStandEntity(final EntityType<? extends HatStandEntity> type, final World world) {
+        super(type, world);
         this.handItems = NonNullList.withSize(2, ItemStack.EMPTY);
         this.armorItems = NonNullList.withSize(4, ItemStack.EMPTY);
-        this.setSize(WIDTH, HEIGHT);
     }
 
     public float getScale() {
-        return this.height / HEIGHT;
+        return this.getHeight() / HEIGHT;
     }
 
     @Override
-    public float getEyeHeight() {
+    public float getStandingEyeHeight(final Pose pose, final EntitySize size) {
         return 0.4140625F * this.getScale();
     }
 
     @Override
     public ItemStack getPickedResult(final RayTraceResult target) {
-        return new ItemStack(HatStands.Items.HAT_STAND);
+        return new ItemStack(HatStands.Items.HAT_STAND.orElseThrow(IllegalStateException::new));
     }
 
     @Override
@@ -353,7 +339,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     @Override
-    public ItemStack getItemStackFromSlot(final EntityEquipmentSlot slot) {
+    public ItemStack getItemStackFromSlot(final EquipmentSlotType slot) {
         switch (slot.getSlotType()) {
             case HAND:
                 return this.handItems.get(slot.getIndex());
@@ -365,7 +351,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     @Override
-    public void setItemStackToSlot(final EntityEquipmentSlot slot, final ItemStack stack) {
+    public void setItemStackToSlot(final EquipmentSlotType slot, final ItemStack stack) {
         switch (slot.getSlotType()) {
             case HAND:
                 this.playEquipSound(stack);
@@ -379,8 +365,8 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
 
     @Override
     public boolean replaceItemInInventory(final int invSlot, final ItemStack stack) {
-        final EntityEquipmentSlot slot = EntityEquipmentSlot.HEAD;
-        if (invSlot == 100 + slot.getIndex() && (stack.isEmpty() || EntityLiving.isItemStackInSlot(slot, stack))) {
+        final EquipmentSlotType slot = EquipmentSlotType.HEAD;
+        if (invSlot == 100 + slot.getIndex() && (stack.isEmpty() || MobEntity.isItemStackInSlot(slot, stack))) {
             this.setItemStackToSlot(slot, stack);
             return true;
         }
@@ -388,29 +374,29 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     @Override
-    public EnumHandSide getPrimaryHand() {
-        return EnumHandSide.RIGHT;
+    public HandSide getPrimaryHand() {
+        return HandSide.RIGHT;
     }
 
     @Override
     protected SoundEvent getFallSound(final int distance) {
-        return HatStands.SoundEvents.ENTITY_HAT_STAND_FALL;
+        return HatStands.SoundEvents.ENTITY_HAT_STAND_FALL.orElseThrow(IllegalStateException::new);
     }
 
     @Override
     protected SoundEvent getHurtSound(final DamageSource damage) {
-        return HatStands.SoundEvents.ENTITY_HAT_STAND_HIT;
+        return HatStands.SoundEvents.ENTITY_HAT_STAND_HIT.orElseThrow(IllegalStateException::new);
     }
 
     @Override
     protected SoundEvent getDeathSound() {
-        return HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK;
+        return HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK.orElseThrow(IllegalStateException::new);
     }
 
     @Nullable
     @Override
     public AxisAlignedBB getCollisionBox(final Entity entity) {
-        return entity.canBePushed() ? entity.getEntityBoundingBox() : null;
+        return entity.canBePushed() ? entity.getBoundingBox() : null;
     }
 
     @Override
@@ -435,8 +421,18 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     @Override
-    public void onUpdate() {
-        super.onUpdate();
+    public void setRenderYawOffset(final float value) {
+        this.prevRenderYawOffset = this.renderYawOffset = value;
+    }
+
+    @Override
+    public void setRotationYawHead(final float value) {
+        this.prevRotationYawHead = this.rotationYawHead = value;
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
         this.behavior.onUpdate();
     }
 
@@ -444,8 +440,9 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     public void notifyDataManagerChange(final DataParameter<?> key) {
         super.notifyDataManagerChange(key);
         // data parameter is private so we use serializer type
-        if (key.getSerializer() == DataSerializers.STRING) {
-            this.setBehavior(this.getCustomNameTag());
+        if (key.getSerializer() == DataSerializers.OPTIONAL_TEXT_COMPONENT) {
+            final ITextComponent name = this.getCustomName();
+            this.setBehavior(name == null ? "" : name.getString());
         }
     }
 
@@ -459,7 +456,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     @Override
-    public boolean processInitialInteract(final EntityPlayer player, final EnumHand hand) {
+    public boolean processInitialInteract(final PlayerEntity player, final Hand hand) {
         final ItemStack stack = player.getHeldItem(hand);
         if (this.onName(player, stack)) {
             stack.shrink(1);
@@ -468,9 +465,9 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         return super.processInitialInteract(player, hand);
     }
 
-    public boolean onName(final EntityPlayer player, final ItemStack stack) {
+    public boolean onName(final PlayerEntity player, final ItemStack stack) {
         if (stack.hasDisplayName()) {
-            this.setCustomNameTag(stack.getDisplayName());
+            this.setCustomName(stack.getDisplayName());
             this.behavior.onName(player);
             return true;
         }
@@ -486,17 +483,17 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     @Override
-    public void setDead() {
-        super.setDead();
+    public void remove(final boolean keepData) {
+        super.remove(keepData);
         this.behavior.onEnd();
     }
 
     void setScale(final float scale) {
-        this.setSize(WIDTH * scale, HEIGHT * scale);
+        //this.setSize(WIDTH * scale, HEIGHT * scale); TODO: data parameter
     }
 
     void resetSize() {
-        this.setSize(WIDTH, HEIGHT);
+        //this.setSize(WIDTH, HEIGHT);
     }
 
     void lookForward() {
@@ -513,63 +510,65 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     void typeMessage(final String text) {
-        this.typeMessage(new TextComponentString(text));
+        this.typeMessage(new StringTextComponent(text));
     }
 
     void typeMessage(final ITextComponent text) {
-        this.emitChat(new TextComponentTranslation("chat.type.text", this.getDisplayName(), text));
+        this.emitChat(new TranslationTextComponent("chat.type.text", this.getDisplayName(), text));
     }
 
     void emitChat(final ITextComponent chat) {
-        for (final EntityPlayerMP players : this.world.getEntitiesWithinAABB(EntityPlayerMP.class, this.getEntityBoundingBox().grow(16.0D))) {
+        for (final ServerPlayerEntity players : this.world.getEntitiesWithinAABB(ServerPlayerEntity.class, this.getBoundingBox().grow(16.0D))) {
             players.sendStatusMessage(chat, false);
         }
     }
 
+    /*
     @Override
-    protected void setSize(final float width, final float height) {
-        if (width != this.width || height != this.height) {
-            final float oldWidth = this.width;
-            this.width = width;
-            this.height = height;
-            if (this.width < oldWidth) {
-                final double r = width / 2.0D;
-                this.setEntityBoundingBox(new AxisAlignedBB(this.posX - r, this.posY, this.posZ - r, this.posX + r, this.posY + this.height, this.posZ + r));
-            } else {
-                final AxisAlignedBB b = this.getEntityBoundingBox();
-                this.setEntityBoundingBox(new AxisAlignedBB(b.minX, b.minY, b.minZ, b.minX + this.width, b.minY + this.height, b.minZ + this.width));
-                if (this.width > oldWidth && !this.firstUpdate && !this.world.isRemote) {
-                    // Fix vanilla: move just half the width change to maintain pos
-                    this.move(MoverType.SELF, (oldWidth - this.width) / 2.0D, 0.0D, (oldWidth - this.width) / 2.0D);
-                }
+    public void recalculateSize() {
+        final float oldWidth = this.getWidth();
+        Pose pose = this.getPose();
+        EntitySize size = this.getSize(pose);
+        this.size = size;
+        this.eyeHeight = getEyeHeightForge(pose, size);
+        if (size.width < oldWidth) {
+            double r = (double)size.width / 2.0D;
+            this.setBoundingBox(new AxisAlignedBB(this.posX - r, this.posY, this.posZ - r, this.posX + r, this.posY + size.height, this.posZ + r));
+        } else {
+            AxisAlignedBB b = this.getBoundingBox();
+            this.setBoundingBox(new AxisAlignedBB(b.minX, b.minY, b.minZ, b.minX + size.width, b.minY + size.height, b.minZ + size.width));
+            if (size.width > oldWidth && !this.firstUpdate && !this.world.isRemote) {
+                // Fix vanilla: move just half the width change to maintain pos
+                this.move(MoverType.SELF, new Vec3d((oldWidth - size.width) / 2.0D, 0.0D, (oldWidth - size.width) / 2.0D));
             }
 
         }
     }
+    */
 
     @Override
-    public void onStruckByLightning(final EntityLightningBolt bolt) {}
+    public void onStruckByLightning(final LightningBoltEntity bolt) {}
 
     @Override
-    public EnumActionResult applyPlayerInteraction(final EntityPlayer player, final Vec3d vec, final EnumHand hand) {
+    public ActionResultType applyPlayerInteraction(final PlayerEntity player, final Vec3d vec, final Hand hand) {
         final ItemStack stack = player.getHeldItem(hand);
         if (stack.getItem() == Items.NAME_TAG) {
-            return EnumActionResult.PASS;
+            return ActionResultType.PASS;
         }
         if (!this.world.isRemote && !player.isSpectator()) {
-            if (stack.isEmpty() || EntityLiving.getSlotForItemStack(stack) == EntityEquipmentSlot.HEAD) {
+            if (stack.isEmpty() || MobEntity.getSlotForItemStack(stack) == EquipmentSlotType.HEAD) {
                 this.swapHead(player, stack, hand);
             } else {
-                return EnumActionResult.FAIL;
+                return ActionResultType.FAIL;
             }
         }
-        return EnumActionResult.SUCCESS;
+        return ActionResultType.SUCCESS;
     }
 
-    private void swapHead(final EntityPlayer player, final ItemStack heldStack, final EnumHand hand) {
-        final EntityEquipmentSlot slot = EntityEquipmentSlot.HEAD;
+    private void swapHead(final PlayerEntity player, final ItemStack heldStack, final Hand hand) {
+        final EquipmentSlotType slot = EquipmentSlotType.HEAD;
         final ItemStack slotStack = this.getItemStackFromSlot(slot);
-        if (player.capabilities.isCreativeMode && slotStack.isEmpty() && !heldStack.isEmpty()) {
+        if (player.abilities.isCreativeMode && slotStack.isEmpty() && !heldStack.isEmpty()) {
             final ItemStack stack = heldStack.copy();
             stack.setCount(1);
             this.setItemStackToSlot(slot, stack);
@@ -588,14 +587,14 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
 
     @Override
     public boolean attackEntityFrom(final DamageSource source, final float amount) {
-        if (this.world.isRemote || this.isDead || this.isEntityInvulnerable(source)) {
+        if (this.world.isRemote || !this.isAlive() || this.isInvulnerableTo(source)) {
             return false;
         }
         if (source == DamageSource.OUT_OF_WORLD) {
-            this.setDead();
+            this.remove();
         } else if (source.isExplosion()) {
             this.dropContents();
-            this.setDead();
+            this.remove();
         } else if (source == DamageSource.IN_FIRE) {
             if (this.isBurning()) {
                 this.damage(0.15F);
@@ -608,16 +607,16 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
             if (source.isCreativePlayer()) {
                 this.playBreakSound();
                 this.playParticles();
-                this.setDead();
+                this.remove();
             } else {
-                final long time = this.world.getTotalWorldTime();
+                final long time = this.world.getGameTime();
                 if (time - this.lastPunchTime > 5) {
                     this.world.setEntityState(this, PUNCH_ID);
                     this.lastPunchTime = time;
                 } else {
                     this.dropItem();
                     this.playParticles();
-                    this.setDead();
+                    this.remove();
                 }
             }
         }
@@ -627,15 +626,15 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     private boolean isPlayerDamage(final DamageSource source) {
         if ("player".equals(source.getDamageType())) {
             final Entity e = source.getTrueSource();
-            return !(e instanceof EntityPlayer) || ((EntityPlayer) e).capabilities.allowEdit;
+            return !(e instanceof PlayerEntity) || ((PlayerEntity) e).abilities.allowEdit;
         }
         return false;
     }
 
     private void dropItem() {
-        final ItemStack stack = new ItemStack(HatStands.Items.HAT_STAND);
+        final ItemStack stack = new ItemStack(HatStands.Items.HAT_STAND.orElseThrow(IllegalStateException::new));
         if (this.hasCustomName()) {
-            stack.setStackDisplayName(this.getCustomNameTag());
+            stack.setDisplayName(this.getCustomName());
         }
         Block.spawnAsEntity(this.world, new BlockPos(this), stack);
         this.dropContents();
@@ -661,12 +660,19 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     }
 
     private void playBreakSound() {
-        this.world.playSound(null, this.posX, this.posY, this.posZ, HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK, this.getSoundCategory(), 1.0F, 1.0F);
+        this.world.playSound(null, this.posX, this.posY, this.posZ, HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK.orElseThrow(IllegalStateException::new), this.getSoundCategory(), 1.0F, 1.0F);
+    }
+
+    @Override
+    protected float updateDistance(final float yaw, final float pitch) {
+        this.prevRenderYawOffset = this.prevRotationYaw;
+        this.renderYawOffset = this.rotationYaw;
+        return 0.0F;
     }
 
     private void playParticles() {
-        if (this.world instanceof WorldServer) {
-            ((WorldServer) this.world).spawnParticle(EnumParticleTypes.BLOCK_DUST, this.posX, this.posY + this.height / 1.5D, this.posZ, 6, this.width / 4.0D, this.height / 4.0D, this.width / 4.0D, 0.05D, Block.getStateId(Blocks.PLANKS.getDefaultState()));
+        if (this.world instanceof ServerWorld) {
+            ((ServerWorld) this.world).spawnParticle(new BlockParticleData(ParticleTypes.BLOCK, Blocks.OAK_PLANKS.getDefaultState()), this.posX, this.posY + this.getHeight() / 1.5D, this.posZ, 6, this.getWidth() / 4.0D, this.getHeight() / 4.0D, this.getWidth() / 4.0D, 0.05D);
         }
     }
 
@@ -674,7 +680,7 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
         final float newHealth = this.getHealth() - amount;
         if (newHealth <= 0.5F) {
             this.dropContents();
-            this.setDead();
+            this.remove();
         } else {
             this.setHealth(newHealth);
         }
@@ -684,8 +690,8 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
     public void handleStatusUpdate(final byte id) {
         if (id == PUNCH_ID) {
             if (this.world.isRemote) {
-                this.world.playSound(this.posX, this.posY, this.posZ, HatStands.SoundEvents.ENTITY_HAT_STAND_HIT, this.getSoundCategory(), 0.3F, 1.0F, false);
-                this.lastPunchTime = this.world.getTotalWorldTime();
+                this.world.playSound(this.posX, this.posY, this.posZ, HatStands.SoundEvents.ENTITY_HAT_STAND_HIT.orElseThrow(IllegalStateException::new), this.getSoundCategory(), 0.3F, 1.0F, false);
+                this.lastPunchTime = this.world.getGameTime();
             }
         } else {
             super.handleStatusUpdate(id);
@@ -694,64 +700,64 @@ public final class HatStandEntity extends EntityLivingBase implements IEntityAdd
 
     @Override
     public void onKillCommand() {
-        this.setDead();
+        this.remove();
     }
 
     @Override
-    public void writeEntityToNBT(final NBTTagCompound compound) {
-        super.writeEntityToNBT(compound);
-        final NBTTagList armorList = new NBTTagList();
+    public IPacket<?> createSpawnPacket() {
+        return NetworkHooks.getEntitySpawningPacket(this);
+    }
+
+    @Override
+    public void writeAdditional(final CompoundNBT compound) {
+        super.writeAdditional(compound);
+        final ListNBT armorList = new ListNBT();
         for (final ItemStack stack : this.armorItems) {
-            final NBTTagCompound itemCompound = new NBTTagCompound();
+            final CompoundNBT itemCompound = new CompoundNBT();
             if (!stack.isEmpty()) {
-                stack.writeToNBT(itemCompound);
+                stack.write(itemCompound);
             }
-            armorList.appendTag(itemCompound);
+            armorList.add(itemCompound);
         }
-        compound.setTag("ArmorItems", armorList);
-        final NBTTagList handList = new NBTTagList();
+        compound.put("ArmorItems", armorList);
+        final ListNBT handList = new ListNBT();
         for (final ItemStack stack : this.handItems) {
-            final NBTTagCompound itemCompound = new NBTTagCompound();
+            final CompoundNBT itemCompound = new CompoundNBT();
             if (!stack.isEmpty()) {
-                stack.writeToNBT(itemCompound);
+                stack.write(itemCompound);
             }
-            handList.appendTag(itemCompound);
+            handList.add(itemCompound);
         }
-        compound.setTag("HandItems", handList);
-        compound.setBoolean("Invisible", this.isInvisible());
+        compound.put("HandItems", handList);
+        compound.putBoolean("Invisible", this.isInvisible());
         this.behavior.onSave(compound);
     }
 
     @Override
-    public void readEntityFromNBT(final NBTTagCompound compound) {
-        super.readEntityFromNBT(compound);
-        if (compound.hasKey("ArmorItems", Constants.NBT.TAG_LIST)) {
-            final NBTTagList armorList = compound.getTagList("ArmorItems", Constants.NBT.TAG_COMPOUND);
+    public void readAdditional(final CompoundNBT compound) {
+        super.readAdditional(compound);
+        if (compound.contains("ArmorItems", Constants.NBT.TAG_LIST)) {
+            final ListNBT armorList = compound.getList("ArmorItems", Constants.NBT.TAG_COMPOUND);
             for (int i = 0; i < this.armorItems.size(); i++) {
-                this.armorItems.set(i, new ItemStack(armorList.getCompoundTagAt(i)));
+                this.armorItems.set(i, ItemStack.read(armorList.getCompound(i)));
             }
         }
-        if (compound.hasKey("HandItems", Constants.NBT.TAG_LIST)) {
-            final NBTTagList handList = compound.getTagList("HandItems", Constants.NBT.TAG_COMPOUND);
+        if (compound.contains("HandItems", Constants.NBT.TAG_LIST)) {
+            final ListNBT handList = compound.getList("HandItems", Constants.NBT.TAG_COMPOUND);
             for (int i = 0; i < this.handItems.size(); i++) {
-                this.handItems.set(i, new ItemStack(handList.getCompoundTagAt(i)));
+                this.handItems.set(i, ItemStack.read(handList.getCompound(i)));
             }
         }
         this.setInvisible(compound.getBoolean("Invisible"));
         this.behavior.onLoad(compound);
     }
 
-    @Override
-    public void writeSpawnData(final ByteBuf buf) {}
-
-    @Override
-    public void readSpawnData(final ByteBuf buf) {
-        this.prevRenderYawOffset = this.prevRotationYawHead = this.prevRotationYaw = this.renderYawOffset = this.rotationYawHead = this.rotationYaw;
-    }
-
     public static HatStandEntity create(final World world, final BlockPos pos, final float yaw) {
-        final HatStandEntity hatStand = new HatStandEntity(world);
-        hatStand.setPositionAndRotation(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, yaw, 0.0F);
+        final HatStandEntity hatStand = HatStands.EntityTypes.HAT_STAND.orElseThrow(IllegalStateException::new).create(world);
+        if (hatStand == null) throw new NullPointerException("entity");
+        hatStand.setLocationAndAngles(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, yaw, 0.0F);
+        hatStand.rotationYawHead = yaw;
+        hatStand.renderYawOffset = yaw;
         return hatStand;
     }
 

@@ -2,83 +2,64 @@ package me.paulf.hatstands;
 
 import me.paulf.hatstands.server.HatStandEntity;
 import me.paulf.hatstands.server.HatStandItem;
+import net.minecraft.entity.EntityClassification;
+import net.minecraft.entity.EntityType;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemGroup;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
-import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.RegistryObject;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.registry.EntityEntry;
-import net.minecraftforge.fml.common.registry.EntityEntryBuilder;
-import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
 
-@Mod(modid = HatStands.ID)
-@Mod.EventBusSubscriber(modid = HatStands.ID)
+@Mod(HatStands.ID)
 public final class HatStands {
     public static final String ID = "hatstands";
 
-    @SubscribeEvent
-    public static void onItemRegister(final RegistryEvent.Register<Item> event) {
-        event.getRegistry().register(new HatStandItem()
-            .setTranslationKey("hat_stand")
-            .setMaxStackSize(16)
-            .setRegistryName("hat_stand")
-        );
-    }
-
-    @SubscribeEvent
-    public static void onEntityRegister(final RegistryEvent.Register<EntityEntry> event) {
-        event.getRegistry().register(EntityEntryBuilder.create()
-            .entity(HatStandEntity.class)
-            .factory(HatStandEntity::new)
-            .id(new ResourceLocation(ID, "hat_stand"), 0)
-            .name("hat_stand")
-            .tracker(160, 3, true)
-            .build());
-    }
-
-    @SubscribeEvent
-    public static void onSoundRegister(final RegistryEvent.Register<SoundEvent> event) {
-        event.getRegistry().registerAll(
-            createSound("entity.hat_stand.break"),
-            createSound("entity.hat_stand.fall"),
-            createSound("entity.hat_stand.hit"),
-            createSound("entity.hat_stand.place"),
-            createSound("entity.hat_stand.sexysong")
-        );
-    }
-
-    private static SoundEvent createSound(final String name) {
-        return new SoundEvent(new ResourceLocation(ID, name)).setRegistryName(name);
+    public HatStands() {
+        final IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
+        Items.REG.register(bus);
+        EntityTypes.REG.register(bus);
+        SoundEvents.REG.register(bus);
     }
 
     public static final class Items {
-        private static final Item NULL = net.minecraft.init.Items.AIR;
+        private static final DeferredRegister<Item> REG = new DeferredRegister<>(ForgeRegistries.ITEMS, HatStands.ID);
 
-        @GameRegistry.ObjectHolder(HatStands.ID + ":hat_stand")
-        public static final Item HAT_STAND = NULL;
+        public static final RegistryObject<Item> HAT_STAND = REG.register("hat_stand", () -> new HatStandItem(new Item.Properties().group(ItemGroup.DECORATIONS).maxStackSize(16)));
+    }
 
-        private Items() {}
+    public static final class EntityTypes {
+        private static final DeferredRegister<EntityType<?>> REG = new DeferredRegister<>(ForgeRegistries.ENTITIES, HatStands.ID);
+
+        public static final RegistryObject<EntityType<HatStandEntity>> HAT_STAND = REG.register("hat_stand", () ->
+            EntityType.Builder.create(HatStandEntity::new, EntityClassification.MISC)
+                .size(9.0F / 16.0F, 11.0F / 16.0F)
+                .setTrackingRange(160)
+                .setUpdateInterval(3)
+                .setShouldReceiveVelocityUpdates(true)
+                .build(ID + ":hat_stand")
+        );
     }
 
     public static final class SoundEvents {
-        private static final SoundEvent NULL = net.minecraft.init.SoundEvents.ENTITY_PLAYER_HURT;
+        private static final DeferredRegister<SoundEvent> REG = new DeferredRegister<>(ForgeRegistries.SOUND_EVENTS, HatStands.ID);
 
-        @GameRegistry.ObjectHolder(HatStands.ID + ":entity.hat_stand.break")
-        public static final SoundEvent ENTITY_HAT_STAND_BREAK = NULL;
+        public static final RegistryObject<SoundEvent> ENTITY_HAT_STAND_BREAK = create("entity.hat_stand.break");
 
-        @GameRegistry.ObjectHolder(HatStands.ID + ":entity.hat_stand.fall")
-        public static final SoundEvent ENTITY_HAT_STAND_FALL = NULL;
+        public static final RegistryObject<SoundEvent> ENTITY_HAT_STAND_FALL = create("entity.hat_stand.fall");
 
-        @GameRegistry.ObjectHolder(HatStands.ID + ":entity.hat_stand.hit")
-        public static final SoundEvent ENTITY_HAT_STAND_HIT = NULL;
+        public static final RegistryObject<SoundEvent> ENTITY_HAT_STAND_HIT = create("entity.hat_stand.hit");
 
-        @GameRegistry.ObjectHolder(HatStands.ID + ":entity.hat_stand.place")
-        public static final SoundEvent ENTITY_HAT_STAND_PLACE = NULL;
+        public static final RegistryObject<SoundEvent> ENTITY_HAT_STAND_PLACE = create("entity.hat_stand.place");
 
-        @GameRegistry.ObjectHolder(HatStands.ID + ":entity.hat_stand.sexysong")
-        public static final SoundEvent ENTITY_HAT_STAND_SEXYSONG = NULL;
+        public static final RegistryObject<SoundEvent> ENTITY_HAT_STAND_SEXYSONG = create("entity.hat_stand.sexysong");
 
-        private SoundEvents() {}
+        private static RegistryObject<SoundEvent> create(final String name) {
+            return REG.register(name, () -> new SoundEvent(new ResourceLocation(HatStands.ID, name)));
+        }
     }
 }

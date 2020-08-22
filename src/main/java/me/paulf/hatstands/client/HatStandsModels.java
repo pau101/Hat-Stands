@@ -2,23 +2,19 @@ package me.paulf.hatstands.client;
 
 import me.paulf.hatstands.HatStands;
 import me.paulf.hatstands.server.HatStandEntity;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ModelRegistryEvent;
-import net.minecraftforge.client.model.ModelLoader;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
-import java.util.Objects;
-
-@Mod.EventBusSubscriber(value = Side.CLIENT, modid = HatStands.ID)
+@Mod.EventBusSubscriber(value = Dist.CLIENT, modid = HatStands.ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class HatStandsModels {
     private HatStandsModels() {}
 
     @SubscribeEvent
-    public static void onRegister(final ModelRegistryEvent event) {
-        ModelLoader.setCustomModelResourceLocation(HatStands.Items.HAT_STAND, 0, new ModelResourceLocation(Objects.requireNonNull(HatStands.Items.HAT_STAND.getRegistryName(), "registry name"), "inventory"));
+    public static void onRegister(final FMLClientSetupEvent event) {
         RenderingRegistry.registerEntityRenderingHandler(HatStandEntity.class, HatStandRenderer::new);
     }
 }

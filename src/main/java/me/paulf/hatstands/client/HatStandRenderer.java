@@ -1,26 +1,21 @@
 package me.paulf.hatstands.client;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import me.paulf.hatstands.HatStands;
 import me.paulf.hatstands.server.HatStandEntity;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.entity.RenderLivingBase;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.client.renderer.entity.EntityRendererManager;
+import net.minecraft.client.renderer.entity.LivingRenderer;
+import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 
-public final class HatStandRenderer extends RenderLivingBase<HatStandEntity> {
+public final class HatStandRenderer extends LivingRenderer<HatStandEntity, HatStandModel> {
     private static final ResourceLocation TEXTURE = new ResourceLocation(HatStands.ID, "textures/entity/hat_stand.png");
 
-    public HatStandRenderer(final RenderManager mgr) {
+    public HatStandRenderer(final EntityRendererManager mgr) {
         super(mgr, new HatStandModel(), 0);
         this.addLayer(new HatStandArmorLayer(this));
-    }
-
-    @Override
-    public HatStandModel getMainModel() {
-        return (HatStandModel) super.getMainModel();
     }
 
     @Override
@@ -28,7 +23,7 @@ public final class HatStandRenderer extends RenderLivingBase<HatStandEntity> {
         super.preRenderCallback(stand, delta);
         final float s = stand.getScale();
         if (s != 1.0F) {
-            GlStateManager.scale(s, s, s);
+            GlStateManager.scalef(s, s, s);
         }
     }
 
@@ -39,15 +34,15 @@ public final class HatStandRenderer extends RenderLivingBase<HatStandEntity> {
 
     @Override
     protected boolean canRenderName(final HatStandEntity stand) {
-        return stand.getAlwaysRenderNameTag();
+        return stand.getAlwaysRenderNameTagForRender();
     }
 
     @Override
     public void renderName(final HatStandEntity entity, final double x, final double y, final double z) {
         if (Minecraft.isGuiEnabled() && this.renderManager.pointedEntity == entity) {
-            final ItemStack stack = entity.getItemStackFromSlot(EntityEquipmentSlot.HEAD);
+            final ItemStack stack = entity.getItemStackFromSlot(EquipmentSlotType.HEAD);
             if (!stack.isEmpty() && stack.hasDisplayName()) {
-                this.renderLivingLabel(entity, stack.getDisplayName(), x, y, z, entity.isSneaking() ? 32 : 64);
+                this.renderLivingLabel(entity, stack.getDisplayName().getFormattedText(), x, y, z, entity.shouldRenderSneaking() ? 32 : 64);
             }
         }
     }

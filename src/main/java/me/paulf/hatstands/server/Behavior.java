@@ -1,12 +1,12 @@
 package me.paulf.hatstands.server;
 
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.CompoundNBT;
 
 public interface Behavior {
     Behavior ABSENT = new Behavior() {};
 
-    default void onName(final EntityPlayer player) {}
+    default void onName(final PlayerEntity player) {}
 
     default void onStart() {}
 
@@ -14,7 +14,7 @@ public interface Behavior {
 
     default void onEnd() {}
 
-    default void onSave(final NBTTagCompound compound) {}
+    default void onSave(final CompoundNBT compound) {}
 
-    default void onLoad(final NBTTagCompound compound) {}
+    default void onLoad(final CompoundNBT compound) {}
 }

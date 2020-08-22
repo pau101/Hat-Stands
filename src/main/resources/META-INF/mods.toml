@@ -1,0 +1,23 @@
+modLoader="javafml"
+loaderVersion="[28,)"
+issueTrackerURL="https://github.com/pau101/Hat-Stands/issues"
+[[mods]]
+	modId="hatstands"
+	version="${version}"
+	displayName="Hat Stands"
+	displayURL="https://www.curseforge.com/minecraft/mc-mods/hat-stands"
+	authors="pau101"
+	description="Hat Stands for all your hat displaying needs."
+	logoFile="logo.png"
+[[dependencies.hatstands]]
+	modId="forge"
+	mandatory=true
+	versionRange="[28,)"
+	ordering="NONE"
+	side="BOTH"
+[[dependencies.hatstands]]
+	modId="minecraft"
+	mandatory=true
+	versionRange="[1.14.4]"
+	ordering="NONE"
+	side="BOTH"

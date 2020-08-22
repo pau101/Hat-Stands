@@ -6,44 +6,49 @@ import com.google.common.collect.Iterators;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import me.paulf.hatstands.util.Mth;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockJukebox;
-import net.minecraft.block.BlockLever;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.EntityTracker;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.init.SoundEvents;
-import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.HorizontalFaceBlock;
+import net.minecraft.block.JukeboxBlock;
+import net.minecraft.block.RedstoneLampBlock;
+import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.inventory.EquipmentSlotType;
+import net.minecraft.item.IDyeableArmorItem;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemArmor;
-import net.minecraft.item.ItemRecord;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.play.server.SPacketEntityEquipment;
+import net.minecraft.item.Items;
+import net.minecraft.item.MusicDiscItem;
+import net.minecraft.network.play.server.SEntityEquipmentPacket;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.HttpUtil;
+import net.minecraft.util.Direction;
+import net.minecraft.util.HTTPUtil;
+import net.minecraft.util.Hand;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundEvents;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.BlockRayTraceResult;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.Style;
-import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.util.text.event.ClickEvent;
 import net.minecraft.util.text.event.HoverEvent;
+import net.minecraft.world.GameRules;
 import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
 import net.minecraft.world.biome.Biome;
+import net.minecraft.world.gen.Heightmap;
+import net.minecraft.world.server.ServerChunkProvider;
+import net.minecraft.world.server.ServerWorld;
 import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.ServerChatEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
 import java.net.Proxy;
@@ -95,11 +100,11 @@ public class AskAlexaBehavior implements Behavior {
         final Request pending = this.requests.peek();
         if (pending != null) {
             if (pending.time == 6) {
-                final EntityTracker tracker = ((WorldServer) this.entity.world).getEntityTracker();
+                final ServerChunkProvider tracker = ((ServerWorld) this.entity.world).getChunkProvider();
                 final ItemStack ring = new ItemStack(Items.LEATHER_HELMET);
-                ((ItemArmor) ring.getItem()).setColor(ring, "Picton BluE OBtAInEd".hashCode() & 0xFFFFFF);
-                tracker.sendToTracking(this.entity, new SPacketEntityEquipment(this.entity.getEntityId(), EntityEquipmentSlot.HEAD, ring));
-                this.entity.playSound(SoundEvents.BLOCK_NOTE_CHIME, 0.125F, 0.668F);
+                ((IDyeableArmorItem) ring.getItem()).setColor(ring, "Picton BluE OBtAInEd".hashCode() & 0xFFFFFF);
+                tracker.sendToAllTracking(this.entity, new SEntityEquipmentPacket(this.entity.getEntityId(), EquipmentSlotType.HEAD, ring));
+                this.entity.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME, 0.125F, 0.668F);
                 this.remaining = 32;
             }
             if (pending.time-- <= 0) {
@@ -110,9 +115,9 @@ public class AskAlexaBehavior implements Behavior {
         if (this.remaining > 0) {
             this.remaining--;
             if (this.remaining == 0) {
-                final EntityTracker tracker = ((WorldServer) this.entity.world).getEntityTracker();
-                tracker.sendToTracking(this.entity, new SPacketEntityEquipment(this.entity.getEntityId(), EntityEquipmentSlot.HEAD, this.entity.getItemStackFromSlot(EntityEquipmentSlot.HEAD)));
-                this.entity.playSound(SoundEvents.BLOCK_NOTE_CHIME, 0.125F, 0.0F);
+                final ServerChunkProvider tracker = ((ServerWorld) this.entity.world).getChunkProvider();
+                tracker.sendToAllTracking(this.entity, new SEntityEquipmentPacket(this.entity.getEntityId(), EquipmentSlotType.HEAD, this.entity.getItemStackFromSlot(EquipmentSlotType.HEAD)));
+                this.entity.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME, 0.125F, 0.0F);
             }
         }
     }
@@ -124,7 +129,7 @@ public class AskAlexaBehavior implements Behavior {
 
     @SubscribeEvent
     public void onChat(final ServerChatEvent event) {
-        final EntityPlayerMP player = event.getPlayer();
+        final ServerPlayerEntity player = event.getPlayer();
         if (this.entity.getDistanceSq(player) < 10.0F * 10.0F) {
             final String msg = event.getMessage();
             char ch;
@@ -172,7 +177,7 @@ public class AskAlexaBehavior implements Behavior {
             } else if ("play".equals(first) && args.hasNext()) {
                 final String second = args.next();
                 final Item item;
-                if (!args.hasNext() && (item = ForgeRegistries.ITEMS.getValue(new ResourceLocation("record_" + second.toLowerCase(Locale.ROOT)))) instanceof ItemRecord) {
+                if (!args.hasNext() && (item = ForgeRegistries.ITEMS.getValue(new ResourceLocation("record_" + second.toLowerCase(Locale.ROOT)))) instanceof MusicDiscItem) {
                     final SortedSet<BlockPos> candidates = this.findJukebox();
                     if (candidates.isEmpty()) {
                         e.typeMessage("I can't find any music in your library.");
@@ -198,8 +203,8 @@ public class AskAlexaBehavior implements Behavior {
                         thing = third;
                     }
                     if ("lamp".equals(thing) && (!args.hasNext() || ".".equals(args.next()) && !args.hasNext())) {
-                        final Block block = "on".equals(second) ? Blocks.REDSTONE_LAMP : Blocks.LIT_REDSTONE_LAMP;
-                        final SortedSet<BlockPos> candidates = this.findBlock(state -> state.getBlock() == block);
+                        final boolean lit = "on".equals(second);
+                        final SortedSet<BlockPos> candidates = this.findBlock(state -> state.getBlock() == Blocks.REDSTONE_LAMP && state.get(RedstoneLampBlock.LIT) == lit);
                         if (candidates.isEmpty()) {
                             e.typeMessage("I can't find any lamps.");
                         } else if (this.togglePower(candidates.first(), true)) {
@@ -220,8 +225,8 @@ public class AskAlexaBehavior implements Behavior {
                         final BlockPos pos = new BlockPos(e);
                         final Biome biome = world.getBiome(pos);
                         final String verb, noun;
-                        if (biome.canRain() || biome.getEnableSnow()) {
-                            if (world.getBiomeProvider().getTemperatureAtHeight(biome.getTemperature(pos), world.getPrecipitationHeight(pos).getY()) >= 0.15F) {
+                        if (biome.getPrecipitation() != Biome.RainType.NONE) {
+                            if (biome.func_225486_c(world.getHeight(Heightmap.Type.MOTION_BLOCKING, pos)) >= 0.15F) {
                                 verb = "raining";
                                 noun = "rain";
                             } else {
@@ -238,9 +243,9 @@ public class AskAlexaBehavior implements Behavior {
                             if ("today".equals(day)) {
                                 e.typeMessage(String.format("It is %s right now.", verb));
                             } else {
-                                if (world.getGameRules().getBoolean("doWeatherCycle")) {
-                                    final long tick = info.getWorldTime();
-                                    final long expected = Math.max(info.getCleanWeatherTime(), info.getRainTime());
+                                if (world.getGameRules().getBoolean(GameRules.DO_WEATHER_CYCLE)) {
+                                    final long tick = info.getGameTime();
+                                    final long expected = Math.max(info.getClearWeatherTime(), info.getRainTime());
                                     final long te = (tick + 6000L) % DAY + expected;
                                     if (te >= DAY) {
                                         if (te < 2 * DAY) {
@@ -255,10 +260,10 @@ public class AskAlexaBehavior implements Behavior {
                                     e.typeMessage(String.format("It is expected to %s all day tomorrow.", noun));
                                 }
                             }
-                        } else if (world.getGameRules().getBoolean("doWeatherCycle")) {
+                        } else if (world.getGameRules().getBoolean(GameRules.DO_WEATHER_CYCLE)) {
                             final long from = "today".equals(day) ? 0 : DAY;
-                            final long tick = info.getWorldTime();
-                            final long expected = Math.max(info.getCleanWeatherTime(), info.getRainTime());
+                            final long tick = info.getGameTime();
+                            final long expected = Math.max(info.getClearWeatherTime(), info.getRainTime());
                             final long te = (tick + 6000L) % DAY + expected;
                             if (te >= from && te < from + DAY) {
                                 e.typeMessage(String.format("It might %s %s at %s.", noun, day.toLowerCase(Locale.ROOT), this.formatTime(world, tick + expected)));
@@ -276,29 +281,30 @@ public class AskAlexaBehavior implements Behavior {
                 }
             } else if ("who".equals(first)) {
                 if (Iterators.elementsEqual(args, Iterators.forArray("am", "I", "?"))) {
-                    e.typeMessage(new TextComponentString("You are ").appendSibling(user).appendText("."));
+                    e.typeMessage(new StringTextComponent("You are ").appendSibling(user).appendText("."));
                 } else {
                     e.typeMessage(NOT_SURE);
                 }
             } else if ("what".equals(first)) {
                 if (Iterators.elementsEqual(args, Iterators.forArray("time", "is", "it", "?"))) {
-                    e.typeMessage(String.format("It is %s.", this.formatTime(world, world.getWorldTime())));
+                    e.typeMessage(String.format("It is %s.", this.formatTime(world, world.getGameTime())));
                 } else {
                     e.typeMessage(NOT_SURE);
                 }
             } else if ("what's".equals(first) && args.hasNext()) {
                 if (Iterators.elementsEqual(args, Iterators.forArray("the", "news", "?"))) {
-                    final MinecraftServer server = world.getMinecraftServer();
+                    final MinecraftServer server = world.getServer();
                     if (server == null) {
                         e.typeMessage(SOMETHING_WENT_WRONG);
                         return;
                     }
-                    final Proxy proxy = server.getServerProxy();
+                    // snooper removed so proxy getter now obf stripped
+                    final Proxy proxy = ObfuscationReflectionHelper.getPrivateValue(MinecraftServer.class, server, "field_110456_c");
                     this.remaining = -Math.abs(this.remaining);
-                    Futures.addCallback(HttpUtil.DOWNLOADER_EXECUTOR.submit(() -> News.get(proxy)), new FutureCallback<List<News.Article>>() {
+                    Futures.addCallback(HTTPUtil.DOWNLOADER_EXECUTOR.submit(() -> News.get(proxy)), new FutureCallback<List<News.Article>>() {
                         @Override
-                        public void onSuccess(final @Nullable List<News.Article> result) {
-                            if (!e.isEntityAlive()) {
+                        public void onSuccess(@Nullable final List<News.Article> result) {
+                            if (!e.isAlive()) {
                                 return;
                             }
                             AskAlexaBehavior.this.remaining = Math.abs(AskAlexaBehavior.this.remaining);
@@ -309,13 +315,13 @@ public class AskAlexaBehavior implements Behavior {
                             e.typeMessage("Here's what I found:");
                             for (final ListIterator<News.Article> it = result.listIterator(result.size()); it.hasPrevious(); ) {
                                 final News.Article article = it.previous();
-                                e.emitChat(new TextComponentString(String.format("%s: ", article.getDate().format(NEWS_DATE_FORMATTER)))
+                                e.emitChat(new StringTextComponent(String.format("%s: ", article.getDate().format(NEWS_DATE_FORMATTER)))
                                     .setStyle(new Style().setColor(TextFormatting.GRAY))
-                                    .appendSibling(new TextComponentString(article.getTitle()).setStyle(new Style()
+                                    .appendSibling(new StringTextComponent(article.getTitle()).setStyle(new Style()
                                         .setColor(TextFormatting.BLUE)
                                         .setUnderlined(true)
                                         .setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, article.getUrl().toString()))
-                                        .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponentString(article.getSubHeader()).setStyle(new Style()
+                                        .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new StringTextComponent(article.getSubHeader()).setStyle(new Style()
                                             .setItalic(true))
                                         ))
                                     ))
@@ -325,13 +331,13 @@ public class AskAlexaBehavior implements Behavior {
 
                         @Override
                         public void onFailure(final Throwable t) {
-                            if (e.isEntityAlive()) {
+                            if (e.isAlive()) {
                                 AskAlexaBehavior.this.remaining = Math.abs(AskAlexaBehavior.this.remaining);
                                 e.typeMessage(SOMETHING_WENT_WRONG);
                             }
                         }
 
-                    }, server::addScheduledTask);
+                    }, server);
                 } else {
                     e.typeMessage(NOT_SURE);
                 }
@@ -348,35 +354,47 @@ public class AskAlexaBehavior implements Behavior {
     private String formatTime(final World world, final long time) {
         // f'(x) = 2 / 3 + pi * sin(pi * x) / 6
         // f''(x) = pi * pi / 6 * cos(pi * x)
-        final float h = Mth.wrap(world.provider.calculateCelestialAngle(time, 0.0F), 1.0F) * 24.0F;
+        final float h = Mth.wrap(world.dimension.calculateCelestialAngle(time, 0.0F), 1.0F) * 24.0F;
         return String.format("%d:%02d %cM", ((int) h + 11) % 12 + 1, (int) (h % 1.0F * 60.0F), h < 12.0F ? 'P' : 'A');
     }
 
     private boolean togglePower(final BlockPos pos, final boolean recurse) {
         final World world = this.entity.world;
-        for (final EnumFacing dir : EnumFacing.VALUES) {
+        for (final Direction dir : Direction.values()) {
             final BlockPos n = pos.offset(dir);
-            final IBlockState state = this.entity.world.getBlockState(n);
-            if (state.getBlock() == Blocks.LEVER && state.getValue(BlockLever.FACING).getFacing() == dir) {
-                final FakePlayer fp = FakePlayerFactory.getMinecraft((WorldServer) world);
+            final BlockState state = this.entity.world.getBlockState(n);
+            if (state.getBlock() == Blocks.LEVER && getDirection(state) == dir) {
+                final FakePlayer fp = FakePlayerFactory.getMinecraft((ServerWorld) world);
                 fp.moveToBlockPosAndAngles(pos, 0.0F, 0.0F);
-                fp.setHeldItem(EnumHand.MAIN_HAND, ItemStack.EMPTY);
+                fp.setHeldItem(Hand.MAIN_HAND, ItemStack.EMPTY);
                 fp.setSneaking(false);
-                if (state.getBlock().onBlockActivated(world, n, state, fp, EnumHand.MAIN_HAND, dir, 0.0F, 0.0F, 0.0F)) {
+                if (state.onBlockActivated(world, fp, Hand.MAIN_HAND, new BlockRayTraceResult(Vec3d.ZERO, dir, n, false))) {
                     return false;
                 }
-            } else if (recurse && state.isNormalCube() && !this.togglePower(n, false)) {
+            } else if (recurse && state.isNormalCube(world, n) && !this.togglePower(n, false)) {
                 return false;
             }
         }
         return true;
     }
 
-    private SortedSet<BlockPos> findJukebox() {
-        return this.findBlock(state -> state.getBlock() == Blocks.JUKEBOX && !state.getValue(BlockJukebox.HAS_RECORD));
+    // from HorizontalFaceBlock
+    private static Direction getDirection(final BlockState state) {
+        switch (state.get(HorizontalFaceBlock.FACE)) {
+            case CEILING:
+                return Direction.DOWN;
+            case FLOOR:
+                return Direction.UP;
+            default:
+                return state.get(HorizontalFaceBlock.HORIZONTAL_FACING);
+        }
     }
 
-    private SortedSet<BlockPos> findBlock(final Predicate<IBlockState> filter) {
+    private SortedSet<BlockPos> findJukebox() {
+        return this.findBlock(state -> state.getBlock() == Blocks.JUKEBOX && !state.get(JukeboxBlock.HAS_RECORD));
+    }
+
+    private SortedSet<BlockPos> findBlock(final Predicate<BlockState> filter) {
         final BlockPos origin = new BlockPos(this.entity);
         final Vec3i reach = new Vec3i(2, 2, 2);
         final SortedSet<BlockPos> candidates = new TreeSet<>(Comparator.comparing(origin::distanceSq));

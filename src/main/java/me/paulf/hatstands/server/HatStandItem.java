@@ -1,17 +1,16 @@
 package me.paulf.hatstands.server;
 
 import me.paulf.hatstands.HatStands;
-import net.minecraft.block.Block;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemMonsterPlacer;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
+import net.minecraft.item.ItemUseContext;
+import net.minecraft.util.ActionResultType;
+import net.minecraft.util.Direction;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -20,40 +19,41 @@ import net.minecraft.world.World;
 import java.util.List;
 
 public final class HatStandItem extends Item {
-    public HatStandItem() {
-        this.setCreativeTab(CreativeTabs.DECORATIONS);
+    public HatStandItem(final Item.Properties properties) {
+        super(properties);
     }
 
     @Override
-    public EnumActionResult onItemUse(final EntityPlayer player, final World world, final BlockPos pos, final EnumHand hand, final EnumFacing facing, final float hitX, final float hitY, final float hitZ) {
-        final IBlockState state = world.getBlockState(pos);
-        final Block block = state.getBlock();
-        final BlockPos placePos = block.isReplaceable(world, pos) ? pos : pos.offset(facing);
-        final ItemStack stack = player.getHeldItem(hand);
-        if (!player.canPlayerEdit(placePos, facing, stack) || !world.getBlockState(placePos).getBlock().isReplaceable(world, placePos)) {
-            return EnumActionResult.FAIL;
+    public ActionResultType onItemUse(final ItemUseContext context) {
+        final World world = context.getWorld();
+        final PlayerEntity player = context.getPlayer();
+        final BlockItemUseContext blockContext = new BlockItemUseContext(context);
+        final BlockPos placePos = blockContext.getPos();
+        final ItemStack stack = blockContext.getItem();
+        if (!blockContext.canPlace()) {
+            return ActionResultType.FAIL;
         }
         final List<Entity> entities = world.getEntitiesWithinAABBExcludingEntity(null, new AxisAlignedBB(placePos));
         if (!entities.isEmpty()) {
-            return EnumActionResult.FAIL;
+            return ActionResultType.FAIL;
         }
         if (!world.isRemote) {
-            world.setBlockToAir(placePos);
+            world.removeBlock(placePos, false);
             final float yaw;
-            if (facing.getAxis() == EnumFacing.Axis.Y) {
-                yaw = MathHelper.floor(((player.rotationYaw + 180.0D) * 8.0D / 360.0D) + 0.5D) * 360.0F / 8.0F;
+            if (context.getFace().getAxis() == Direction.Axis.Y) {
+                yaw = MathHelper.floor(((context.getPlacementYaw() + 180.0D) * 8.0D / 360.0D) + 0.5D) * 360.0F / 8.0F;
             } else {
-                yaw = facing.getHorizontalAngle();
+                yaw = context.getFace().getHorizontalAngle();
             }
             final HatStandEntity stand = HatStandEntity.create(world, placePos, yaw);
-            ItemMonsterPlacer.applyItemEntityDataToEntity(world, player, stack, stand);
+            EntityType.applyItemNBT(world, player, stand, stack.getTag());
+            world.addEntity(stand);
             if (!stand.hasCustomName()) {
                 stand.onName(player, stack);
             }
-            world.spawnEntity(stand);
-            world.playSound(null, placePos, HatStands.SoundEvents.ENTITY_HAT_STAND_PLACE, stand.getSoundCategory(), 0.75F, 0.8F);
+            world.playSound(null, placePos, HatStands.SoundEvents.ENTITY_HAT_STAND_PLACE.orElseThrow(IllegalStateException::new), stand.getSoundCategory(), 0.75F, 0.8F);
         }
         stack.shrink(1);
-        return EnumActionResult.SUCCESS;
+        return ActionResultType.SUCCESS;
     }
 }
