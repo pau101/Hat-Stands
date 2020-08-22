@@ -113,17 +113,17 @@ public final class HatStandEntity extends LivingEntity {
                 e.lookForward();
             }
         }))
-        .put("bebigger", new Behavior() {
+        .put("bebigger", this.onServer(e -> new Behavior() {
             @Override
             public void onStart() {
-                HatStandEntity.this.setSize(Scale.BIG);
+                e.setSize(Scale.BIG);
             }
 
             @Override
             public void onEnd() {
-                HatStandEntity.this.setSize(Scale.NORMAL);
+                e.setSize(Scale.NORMAL);
             }
-        })
+        }))
         .put("catfacts", this.onServer(e -> new Behavior() {
             int delay = -1;
 
@@ -203,17 +203,17 @@ public final class HatStandEntity extends LivingEntity {
                 }
             }
         }))
-        .put("moremini", new Behavior() {
+        .put("moremini", this.onServer(e -> new Behavior() {
             @Override
             public void onStart() {
-                HatStandEntity.this.setSize(Scale.MINI);
+                e.setSize(Scale.MINI);
             }
 
             @Override
             public void onEnd() {
-                HatStandEntity.this.setSize(Scale.NORMAL);
+                e.setSize(Scale.NORMAL);
             }
-        })
+        }))
         .put("sexysong", this.onServer(e -> new Behavior() {
             boolean powered = false;
             BlockPos pos = BlockPos.ZERO;
@@ -332,7 +332,7 @@ public final class HatStandEntity extends LivingEntity {
 
     @Override
     public float getStandingEyeHeight(final Pose pose, final EntitySize size) {
-        return 0.4140625F * size.height;
+        return 0.65F * size.height;
     }
 
     @Override
