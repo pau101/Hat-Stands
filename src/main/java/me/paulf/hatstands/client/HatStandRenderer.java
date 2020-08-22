@@ -34,12 +34,12 @@ public final class HatStandRenderer extends LivingRenderer<HatStandEntity, HatSt
 
     @Override
     protected boolean canRenderName(final HatStandEntity stand) {
-        return stand.getAlwaysRenderNameTagForRender();
+        return Minecraft.isGuiEnabled() && this.renderManager.pointedEntity == stand;
     }
 
     @Override
     public void renderName(final HatStandEntity entity, final double x, final double y, final double z) {
-        if (Minecraft.isGuiEnabled() && this.renderManager.pointedEntity == entity) {
+        if (this.canRenderName(entity)) {
             final ItemStack stack = entity.getItemStackFromSlot(EquipmentSlotType.HEAD);
             if (!stack.isEmpty() && stack.hasDisplayName()) {
                 this.renderLivingLabel(entity, stack.getDisplayName().getFormattedText(), x, y, z, entity.shouldRenderSneaking() ? 32 : 64);
