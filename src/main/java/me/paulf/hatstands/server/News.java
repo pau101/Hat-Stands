@@ -38,11 +38,10 @@ public final class News {
     private static final URL CONTENT = HttpAuthenticationService.constantURL(
         "https://www.minecraft.net/content/minecraft-net/_jcr_content.articles.grid?" +
         "tileselection=auto&" +
-        "tagsPath=minecraft:article/culture,minecraft:article/insider,minecraft:article/merch,minecraft:article/news&" +
+        "tagsPath=minecraft:article/culture,minecraft:article/insider,minecraft:article/merch,minecraft:article/news,minecraft:stockholm/news,minecraft:stockholm/merch,minecraft:stockholm/minecraft&" +
         "propResPath=/content/minecraft-net/language-masters/en-us/jcr:content/root/generic-container/par/grid&" +
-        "count=2000&" +
+        "count=500&" +
         "pageSize=6&" +
-        "tag=News&" +
         "lang=/content/minecraft-net/language-masters/en-us"
     );
 

@@ -177,7 +177,7 @@ public class AskAlexaBehavior implements Behavior {
             } else if ("play".equals(first) && args.hasNext()) {
                 final String second = args.next();
                 final Item item;
-                if (!args.hasNext() && (item = ForgeRegistries.ITEMS.getValue(new ResourceLocation("record_" + second.toLowerCase(Locale.ROOT)))) instanceof MusicDiscItem) {
+                if (!args.hasNext() && (item = ForgeRegistries.ITEMS.getValue(new ResourceLocation("music_disc_" + second.toLowerCase(Locale.ROOT)))) instanceof MusicDiscItem) {
                     final SortedSet<BlockPos> candidates = this.findJukebox();
                     if (candidates.isEmpty()) {
                         e.typeMessage("I can't find any music in your library.");
@@ -203,7 +203,7 @@ public class AskAlexaBehavior implements Behavior {
                         thing = third;
                     }
                     if ("lamp".equals(thing) && (!args.hasNext() || ".".equals(args.next()) && !args.hasNext())) {
-                        final boolean lit = "on".equals(second);
+                        final boolean lit = !"on".equals(second);
                         final SortedSet<BlockPos> candidates = this.findBlock(state -> state.getBlock() == Blocks.REDSTONE_LAMP && state.get(RedstoneLampBlock.LIT) == lit);
                         if (candidates.isEmpty()) {
                             e.typeMessage("I can't find any lamps.");
