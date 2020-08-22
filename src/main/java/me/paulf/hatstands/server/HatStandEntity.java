@@ -433,6 +433,11 @@ public final class HatStandEntity extends LivingEntity {
     }
 
     @Override
+    public boolean canBreatheUnderwater() {
+        return true;
+    }
+
+    @Override
     public void setRenderYawOffset(final float value) {
         this.prevRenderYawOffset = this.renderYawOffset = value;
     }
