@@ -14,7 +14,6 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.Pose;
 import net.minecraft.entity.effect.LightningBoltEntity;
-import net.minecraft.entity.item.ArmorStandEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
@@ -69,9 +68,7 @@ import java.util.function.Function;
 public final class HatStandEntity extends LivingEntity {
     private static final byte PUNCH_ID = 32;
 
-    private static final float WIDTH = 9.0F / 16.0F;
-
-    private static final float HEIGHT = 11.0F / 16.0F;
+    private static final DataParameter<Byte> SCALE = EntityDataManager.createKey(HatStandEntity.class, DataSerializers.BYTE);
 
     private long lastPunchTime;
 
@@ -119,12 +116,12 @@ public final class HatStandEntity extends LivingEntity {
         .put("bebigger", new Behavior() {
             @Override
             public void onStart() {
-                HatStandEntity.this.setScale(1.5F);
+                HatStandEntity.this.setSize(Scale.BIG);
             }
 
             @Override
             public void onEnd() {
-                HatStandEntity.this.resetSize();
+                HatStandEntity.this.setSize(Scale.NORMAL);
             }
         })
         .put("catfacts", this.onServer(e -> new Behavior() {
@@ -209,12 +206,12 @@ public final class HatStandEntity extends LivingEntity {
         .put("moremini", new Behavior() {
             @Override
             public void onStart() {
-                HatStandEntity.this.setScale(0.5F);
+                HatStandEntity.this.setSize(Scale.MINI);
             }
 
             @Override
             public void onEnd() {
-                HatStandEntity.this.resetSize();
+                HatStandEntity.this.setSize(Scale.NORMAL);
             }
         })
         .put("sexysong", this.onServer(e -> new Behavior() {
@@ -314,13 +311,28 @@ public final class HatStandEntity extends LivingEntity {
         this.armorItems = NonNullList.withSize(4, ItemStack.EMPTY);
     }
 
-    public float getScale() {
-        return this.getHeight() / HEIGHT;
+    @Override
+    protected void registerData() {
+        super.registerData();
+        this.dataManager.register(SCALE, (byte) Scale.NORMAL.ordinal());
+    }
+
+    private void setSize(final Scale scale) {
+        this.dataManager.set(SCALE, (byte) scale.ordinal());
+    }
+
+    private Scale getSize() {
+        return Scale.byOrdinal(this.dataManager.get(SCALE));
+    }
+
+    @Override
+    public float getRenderScale() {
+        return this.getSize().scale;
     }
 
     @Override
     public float getStandingEyeHeight(final Pose pose, final EntitySize size) {
-        return 0.4140625F * this.getScale();
+        return 0.4140625F * size.height;
     }
 
     @Override
@@ -444,6 +456,9 @@ public final class HatStandEntity extends LivingEntity {
             final ITextComponent name = this.getCustomName();
             this.setBehavior(name == null ? "" : name.getString());
         }
+        if (SCALE.equals(key)) {
+            this.recalculateSize();
+        }
     }
 
     private void setBehavior(final String name) {
@@ -488,14 +503,6 @@ public final class HatStandEntity extends LivingEntity {
         this.behavior.onEnd();
     }
 
-    void setScale(final float scale) {
-        //this.setSize(WIDTH * scale, HEIGHT * scale); TODO: data parameter
-    }
-
-    void resetSize() {
-        //this.setSize(WIDTH, HEIGHT);
-    }
-
     void lookForward() {
         this.rotationPitch = 0.0F;
         this.rotationYawHead = this.rotationYaw;
@@ -523,28 +530,14 @@ public final class HatStandEntity extends LivingEntity {
         }
     }
 
-    /*
     @Override
     public void recalculateSize() {
-        final float oldWidth = this.getWidth();
-        Pose pose = this.getPose();
-        EntitySize size = this.getSize(pose);
-        this.size = size;
-        this.eyeHeight = getEyeHeightForge(pose, size);
-        if (size.width < oldWidth) {
-            double r = (double)size.width / 2.0D;
-            this.setBoundingBox(new AxisAlignedBB(this.posX - r, this.posY, this.posZ - r, this.posX + r, this.posY + size.height, this.posZ + r));
-        } else {
-            AxisAlignedBB b = this.getBoundingBox();
-            this.setBoundingBox(new AxisAlignedBB(b.minX, b.minY, b.minZ, b.minX + size.width, b.minY + size.height, b.minZ + size.width));
-            if (size.width > oldWidth && !this.firstUpdate && !this.world.isRemote) {
-                // Fix vanilla: move just half the width change to maintain pos
-                this.move(MoverType.SELF, new Vec3d((oldWidth - size.width) / 2.0D, 0.0D, (oldWidth - size.width) / 2.0D));
-            }
-
-        }
+        final double x = this.posX;
+        final double y = this.posY;
+        final double z = this.posZ;
+        super.recalculateSize();
+        this.setPosition(x, y, z);
     }
-    */
 
     @Override
     public void onStruckByLightning(final LightningBoltEntity bolt) {}
@@ -770,6 +763,24 @@ public final class HatStandEntity extends LivingEntity {
             } catch (final IOException e) {
                 return ImmutableList.of("Cat facts are surprisingly difficult to find.");
             }
+        }
+    }
+
+    enum Scale {
+        MINI(0.5F),
+        NORMAL(1.0F),
+        BIG(1.5F);
+
+        static final Scale[] VALUES = Scale.values();
+
+        final float scale;
+
+        Scale(final float scale) {
+            this.scale = scale;
+        }
+
+        static Scale byOrdinal(final int ordinal) {
+            return ordinal >= 0 && ordinal < VALUES.length ? VALUES[ordinal] : NORMAL;
         }
     }
 }

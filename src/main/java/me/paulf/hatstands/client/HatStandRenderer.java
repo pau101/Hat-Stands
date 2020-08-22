@@ -21,7 +21,7 @@ public final class HatStandRenderer extends LivingRenderer<HatStandEntity, HatSt
     @Override
     protected void preRenderCallback(final HatStandEntity stand, final float delta) {
         super.preRenderCallback(stand, delta);
-        final float s = stand.getScale();
+        final float s = stand.getRenderScale();
         if (s != 1.0F) {
             GlStateManager.scalef(s, s, s);
         }
