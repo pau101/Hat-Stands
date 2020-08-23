@@ -14,20 +14,17 @@ import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.entity.projectile.EggEntity;
 import net.minecraft.inventory.container.ContainerType;
-import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.play.server.SOpenWindowPacket;
 import net.minecraft.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.SoundEvents;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
 import net.minecraft.world.gen.Heightmap;
 import net.minecraft.world.server.ServerChunkProvider;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
@@ -37,6 +34,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public final class HatStandBehaviors {
     static class Builder {
@@ -188,6 +187,46 @@ public final class HatStandBehaviors {
                     }
                 }
             })
+            .putServer("digdaily", e -> new Behavior() {
+                BlockPos pos = BlockPos.ZERO;
+                long startTime;
+                int lastProgress;
+
+                @Override
+                public void onUpdate() {
+                    final int h = 8;
+                    final int v = 4;
+                    if (this.pos.equals(BlockPos.ZERO)) {
+                        if (e.ticksExisted % 103 == 0 && e.getRNG().nextFloat() < 0.4F) {
+                            final List<BlockPos> candidates = StreamSupport.stream(BlockPos.getAllInBoxMutable(new BlockPos(e).add(-h, -v, -h), new BlockPos(e).add(h, v, h)).spliterator(), false)
+                                .filter(this::harvestable)
+                                .map(BlockPos::toImmutable)
+                                .collect(Collectors.toList());
+                            if (!candidates.isEmpty()) {
+                                this.pos = candidates.get(e.getRNG().nextInt(candidates.size()));
+                                this.startTime = e.world.getGameTime();
+                                this.lastProgress = -1;
+                            }
+                        }
+                    } else if (this.harvestable(this.pos)) {
+                        final int progress = (int) (e.world.getGameTime() - this.startTime) * 10 / 20;
+                        if (progress != this.lastProgress) {
+                            e.world.sendBlockBreakProgress(e.getEntityId(), this.pos, progress);
+                            this.lastProgress = progress;
+                            if (progress >= 10) {
+                                e.world.destroyBlock(this.pos, true);
+                                this.pos = BlockPos.ZERO;
+                            }
+                        }
+                    } else {
+                        this.pos = BlockPos.ZERO;
+                    }
+                }
+
+                boolean harvestable(final BlockPos pos) {
+                    return e.world.isBlockPresent(pos) && e.world.getBlockState(pos).getBlock() == Blocks.GRASS_BLOCK;
+                }
+            })
             .putServer("extraegg", e -> new Behavior() {
                 @Override
                 public void onUpdate() {
@@ -243,7 +282,7 @@ public final class HatStandBehaviors {
             })
             .putServer("sexysong", e -> new RunnableBehavior(e) {
                 @Override
-                void run() {
+                protected void run() {
                     this.stand.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG.orElseThrow(IllegalStateException::new), 1.0F, 1.0F);
                 }
             })
@@ -289,69 +328,4 @@ public final class HatStandBehaviors {
         }
     }
 
-    abstract static class RunnableBehavior implements Behavior {
-        final HatStandEntity stand;
-        boolean powered;
-        BlockPos pos;
-
-        public RunnableBehavior(final HatStandEntity stand) {
-            this.stand = stand;
-            this.powered = false;
-            this.pos = BlockPos.ZERO;
-        }
-
-        abstract void run();
-
-        @Override
-        public void onName(final PlayerEntity player) {
-            this.run();
-        }
-
-        @Override
-        public void onStart() {
-            MinecraftForge.EVENT_BUS.register(this);
-        }
-
-        @Override
-        public void onEnd() {
-            MinecraftForge.EVENT_BUS.unregister(this);
-        }
-
-        @SubscribeEvent(priority = EventPriority.LOW)
-        public void onNeighborNotify(final BlockEvent.NeighborNotifyEvent event) {
-            if (event.getState().isNormalCube(event.getWorld(), event.getPos())) {
-                final World world = (World) event.getWorld();
-                final BlockPos pos = event.getPos();
-                // new BlockPos(e).equals(pos.up())
-                if (this.stand.posX >= pos.getX() && this.stand.posX < pos.getX() + 1.0D &&
-                    this.stand.posZ >= pos.getZ() && this.stand.posZ < pos.getZ() + 1.0D &&
-                    this.stand.posY >= pos.getY() + 1.0D && this.stand.posY < pos.getY() + 2.0D) {
-                    final boolean powered = world.isBlockPowered(pos);
-                    if (powered && (!this.powered || !this.pos.equals(pos))) {
-                        this.run();
-                    }
-                    this.powered = powered;
-                    this.pos = pos.toImmutable();
-                }
-            }
-        }
-
-        @Override
-        public void onSave(final CompoundNBT compound) {
-            compound.putBoolean("Powered", this.powered);
-            compound.putInt("PoweredX", this.pos.getX());
-            compound.putInt("PoweredY", this.pos.getY());
-            compound.putInt("PoweredZ", this.pos.getZ());
-        }
-
-        @Override
-        public void onLoad(final CompoundNBT compound) {
-            this.powered = compound.getBoolean("Powered");
-            this.pos = new BlockPos(
-                compound.getInt("PoweredX"),
-                compound.getInt("PoweredY"),
-                compound.getInt("PoweredZ")
-            );
-        }
-    }
 }
