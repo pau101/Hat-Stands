@@ -195,7 +195,6 @@ public final class HatStandBehaviors {
                         e.rotationPitch = 15.0F;
                         e.playSound(SoundEvents.ENTITY_EGG_THROW, 0.5F, 0.4F / (e.getRNG().nextFloat() * 0.4F + 0.8F));
                         final EggEntity egg = new EggEntity(e.world, e);
-                        // egg.ignoreEntity = e; FIXME
                         egg.shoot(e, e.rotationPitch, e.rotationYaw, 0.0F, 1.5F, 1.0F);
                         e.world.addEntity(egg);
                     } else if (e.ticksExisted % 13 == 5) {
