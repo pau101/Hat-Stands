@@ -241,64 +241,10 @@ public final class HatStandBehaviors {
                     e.setSize(HatStandEntity.Scale.NORMAL);
                 }
             })
-            .putServer("sexysong", e -> new Behavior() {
-                boolean powered = false;
-                BlockPos pos = BlockPos.ZERO;
-
-                void play() {
-                    e.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG.orElseThrow(IllegalStateException::new), 1.0F, 1.0F);
-                }
-
+            .putServer("sexysong", e -> new RunnableBehavior(e) {
                 @Override
-                public void onName(final PlayerEntity player) {
-                    this.play();
-                }
-
-                @Override
-                public void onStart() {
-                    MinecraftForge.EVENT_BUS.register(this);
-                }
-
-                @Override
-                public void onEnd() {
-                    MinecraftForge.EVENT_BUS.unregister(this);
-                }
-
-                @SubscribeEvent(priority = EventPriority.LOW)
-                public void onNeighborNotify(final BlockEvent.NeighborNotifyEvent event) {
-                    if (event.getState().isNormalCube(event.getWorld(), event.getPos())) {
-                        final World world = (World) event.getWorld();
-                        final BlockPos pos = event.getPos();
-                        // new BlockPos(e).equals(pos.up())
-                        if (e.posX >= pos.getX() && e.posX < pos.getX() + 1.0D &&
-                            e.posZ >= pos.getZ() && e.posZ < pos.getZ() + 1.0D &&
-                            e.posY >= pos.getY() + 1.0D && e.posY < pos.getY() + 2.0D) {
-                            final boolean powered = world.isBlockPowered(pos);
-                            if (powered && (!this.powered || !this.pos.equals(pos))) {
-                                this.play();
-                            }
-                            this.powered = powered;
-                            this.pos = pos.toImmutable();
-                        }
-                    }
-                }
-
-                @Override
-                public void onSave(final CompoundNBT compound) {
-                    compound.putBoolean("Powered", this.powered);
-                    compound.putInt("PoweredX", this.pos.getX());
-                    compound.putInt("PoweredY", this.pos.getY());
-                    compound.putInt("PoweredZ", this.pos.getZ());
-                }
-
-                @Override
-                public void onLoad(final CompoundNBT compound) {
-                    this.powered = compound.getBoolean("Powered");
-                    this.pos = new BlockPos(
-                        compound.getInt("PoweredX"),
-                        compound.getInt("PoweredY"),
-                        compound.getInt("PoweredZ")
-                    );
+                void run() {
+                    this.stand.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG.orElseThrow(IllegalStateException::new), 1.0F, 1.0F);
                 }
             })
             .putClient("smallspy", e -> new Behavior() {
@@ -340,6 +286,72 @@ public final class HatStandBehaviors {
             } catch (final IOException e) {
                 return ImmutableList.of("Cat facts are surprisingly difficult to find.");
             }
+        }
+    }
+
+    abstract static class RunnableBehavior implements Behavior {
+        final HatStandEntity stand;
+        boolean powered;
+        BlockPos pos;
+
+        public RunnableBehavior(final HatStandEntity stand) {
+            this.stand = stand;
+            this.powered = false;
+            this.pos = BlockPos.ZERO;
+        }
+
+        abstract void run();
+
+        @Override
+        public void onName(final PlayerEntity player) {
+            this.run();
+        }
+
+        @Override
+        public void onStart() {
+            MinecraftForge.EVENT_BUS.register(this);
+        }
+
+        @Override
+        public void onEnd() {
+            MinecraftForge.EVENT_BUS.unregister(this);
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOW)
+        public void onNeighborNotify(final BlockEvent.NeighborNotifyEvent event) {
+            if (event.getState().isNormalCube(event.getWorld(), event.getPos())) {
+                final World world = (World) event.getWorld();
+                final BlockPos pos = event.getPos();
+                // new BlockPos(e).equals(pos.up())
+                if (this.stand.posX >= pos.getX() && this.stand.posX < pos.getX() + 1.0D &&
+                    this.stand.posZ >= pos.getZ() && this.stand.posZ < pos.getZ() + 1.0D &&
+                    this.stand.posY >= pos.getY() + 1.0D && this.stand.posY < pos.getY() + 2.0D) {
+                    final boolean powered = world.isBlockPowered(pos);
+                    if (powered && (!this.powered || !this.pos.equals(pos))) {
+                        this.run();
+                    }
+                    this.powered = powered;
+                    this.pos = pos.toImmutable();
+                }
+            }
+        }
+
+        @Override
+        public void onSave(final CompoundNBT compound) {
+            compound.putBoolean("Powered", this.powered);
+            compound.putInt("PoweredX", this.pos.getX());
+            compound.putInt("PoweredY", this.pos.getY());
+            compound.putInt("PoweredZ", this.pos.getZ());
+        }
+
+        @Override
+        public void onLoad(final CompoundNBT compound) {
+            this.powered = compound.getBoolean("Powered");
+            this.pos = new BlockPos(
+                compound.getInt("PoweredX"),
+                compound.getInt("PoweredY"),
+                compound.getInt("PoweredZ")
+            );
         }
     }
 }
