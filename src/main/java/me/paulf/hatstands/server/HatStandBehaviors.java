@@ -14,25 +14,32 @@ import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.entity.projectile.EggEntity;
 import net.minecraft.inventory.container.ContainerType;
+import net.minecraft.item.FishingRodItem;
+import net.minecraft.item.ItemStack;
 import net.minecraft.network.play.server.SOpenWindowPacket;
 import net.minecraft.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.SoundEvents;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import net.minecraft.world.gen.Heightmap;
 import net.minecraft.world.server.ServerChunkProvider;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 
 import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
+import java.util.Objects;
+import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -242,6 +249,9 @@ public final class HatStandBehaviors {
                 }
             })
             .putServer("freefish", FreeFishBehavior::new)
+            // grabgold
+            // givegive
+            // goodgame
             .putClient("hasheart", e -> new Behavior() {
                 @Override
                 public void onUpdate() {
@@ -266,6 +276,37 @@ public final class HatStandBehaviors {
                         for (final ServerPlayerEntity player : e.world.getEntitiesWithinAABB(ServerPlayerEntity.class, e.getBoundingBox().grow(1.0D))) {
                             player.attackEntityFrom(damage, 1.0F);
                         }
+                    }
+                }
+            })
+            // ironitem
+            .putServer("justjunk", e -> new Behavior() {
+                final int[] unlucky = {
+                    0x8b03a0c6, 0x8c6e76e8, 0x91f93c32, 0xabd58aaf,
+                    0xaf2050f1, 0xb08ce61b, 0xc9b61c10, 0xcd02a23a,
+                    0xe849c6f9, 0xedd48c03, 0x00b2057c, 0x1b02cf2b,
+                    0x1c6d954d, 0x2345ef45, 0x3bd4a930, 0x3f277f5a,
+                    0x59b53b75, 0x5d01c09f, 0x7848e542, 0x7ddbab64
+                };
+
+                @Override
+                public void onStart() {
+                    MinecraftForge.EVENT_BUS.register(this);
+                }
+
+                @Override
+                public void onEnd() {
+                    MinecraftForge.EVENT_BUS.unregister(this);
+                }
+
+                @SubscribeEvent
+                public void onUseItem(final PlayerInteractEvent.RightClickItem event) {
+                    final World world = event.getWorld();
+                    final ItemStack stack = event.getItemStack();
+                    final PlayerEntity player = event.getPlayer();
+                    if (!world.isRemote && stack.getItem() instanceof FishingRodItem && player.fishingBobber != null && e.getDistanceSq(player) < 16.0D * 16.0D) {
+                        final Random rand = Objects.requireNonNull(ObfuscationReflectionHelper.getPrivateValue(Entity.class, player.fishingBobber, "field_70146_Z"), "rand");
+                        rand.setSeed(this.unlucky[player.getRNG().nextInt(this.unlucky.length)]);
                     }
                 }
             })
