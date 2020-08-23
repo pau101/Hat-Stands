@@ -7,6 +7,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.effect.LightningBoltEntity;
+import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.passive.CowEntity;
 import net.minecraft.entity.passive.PigEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -19,7 +20,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.network.play.server.SOpenWindowPacket;
 import net.minecraft.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.Direction;
 import net.minecraft.util.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -27,16 +30,22 @@ import net.minecraft.world.gen.Heightmap;
 import net.minecraft.world.server.ServerChunkProvider;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.Tags;
+import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.ItemHandlerHelper;
 
 import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -249,9 +258,46 @@ public final class HatStandBehaviors {
                 }
             })
             .putServer("freefish", FreeFishBehavior::new)
-            // grabgold
-            // givegive
-            // goodgame
+            .putServer("grabgold", e -> new Behavior() {
+                @Override
+                public void onUpdate() {
+                    if (e.ticksExisted % 7 == 0 && e.getRNG().nextFloat() < 0.2F) {
+                        this.chest().ifPresent(handler -> {
+                            final List<ItemEntity> entities = e.world.getEntitiesWithinAABB(
+                                ItemEntity.class,
+                                e.getBoundingBox().grow(6.0D, 4.0D, 6.0D),
+                                e -> e.isAlive() && (e.getItem().getItem().isIn(Tags.Items.ORES_GOLD) ||
+                                    e.getItem().getItem().isIn(Tags.Items.INGOTS_GOLD) ||
+                                    e.getItem().getItem().isIn(Tags.Items.NUGGETS_GOLD))
+                            );
+                            Collections.shuffle(entities);
+                            for (final ItemEntity entity : entities) {
+                                final ItemStack original = entity.getItem();
+                                final ItemStack stack = ItemHandlerHelper.insertItem(handler, original, false);
+                                if (stack.isEmpty()) {
+                                    entity.remove();
+                                } else {
+                                    entity.setItem(stack);
+                                }
+                                if (stack.getCount() < original.getCount()) {
+                                    break;
+                                }
+                            }
+                        });
+                    }
+                }
+
+                LazyOptional<IItemHandler> chest() {
+                    final BlockPos below = new BlockPos(e.posX, e.posY - 0.5D, e.posZ);
+                    if (e.world.getBlockState(below).isIn(Tags.Blocks.CHESTS)) {
+                        final TileEntity entity = e.world.getTileEntity(below);
+                        if (entity != null) {
+                            return entity.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, Direction.UP);
+                        }
+                    }
+                    return LazyOptional.empty();
+                }
+            })
             .putClient("hasheart", e -> new Behavior() {
                 @Override
                 public void onUpdate() {
@@ -368,5 +414,4 @@ public final class HatStandBehaviors {
             }
         }
     }
-
 }
