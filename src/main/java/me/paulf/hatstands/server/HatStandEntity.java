@@ -14,6 +14,8 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.Pose;
 import net.minecraft.entity.effect.LightningBoltEntity;
+import net.minecraft.entity.passive.CowEntity;
+import net.minecraft.entity.passive.PigEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
@@ -48,10 +50,12 @@ import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.World;
+import net.minecraft.world.gen.Heightmap;
 import net.minecraft.world.server.ServerChunkProvider;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -122,6 +126,44 @@ public final class HatStandEntity extends LivingEntity {
             @Override
             public void onEnd() {
                 e.setSize(Scale.NORMAL);
+            }
+        }))
+        .put("beefbolt", this.onServer(e -> new Behavior() {
+            @Override
+            public void onUpdate() {
+                if (e.ticksExisted % 57 == 0 && e.rand.nextFloat() < 0.15F) {
+                    final List<CowEntity> entities = e.world.getEntitiesWithinAABB(
+                        CowEntity.class,
+                        e.getBoundingBox().grow(10.0D, 6.0D, 10.0D),
+                        e -> e != null && e.isAlive() && !e.isOnSameTeam(e) && e.canEntityBeSeen(e)
+                    );
+                    if (!entities.isEmpty()) {
+                        final CowEntity beef = entities.get(e.rand.nextInt(entities.size()));
+                        if (beef.posY + beef.getHeight() > e.world.getHeight(Heightmap.Type.MOTION_BLOCKING, new BlockPos(beef)).getY()) {
+                            ((ServerWorld) e.world).addLightningBolt(new LightningBoltEntity(e.world, beef.posX, beef.posY, beef.posZ, false));
+                        }
+                    }
+                }
+            }
+        }))
+        .put("baconbow", this.onServer(e -> new Behavior() {
+            @Override
+            public void onStart() {
+                MinecraftForge.EVENT_BUS.register(this);
+            }
+
+            @Override
+            public void onEnd() {
+                MinecraftForge.EVENT_BUS.unregister(this);
+            }
+
+            @SubscribeEvent(priority = EventPriority.LOW)
+            public void onAttack(final LivingAttackEvent event) {
+                final DamageSource source = event.getSource();
+                final Entity entity = event.getEntity();
+                if (source.isProjectile() && "arrow".equals(source.damageType) && entity instanceof PigEntity && e.getDistanceSq(entity) < 16.0D * 16.0D) {
+                    entity.setFire(5);
+                }
             }
         }))
         .put("catfacts", this.onServer(e -> new Behavior() {
