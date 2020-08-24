@@ -1,14 +1,21 @@
 package me.paulf.hatstands.client;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.vertex.IVertexBuilder;
 import me.paulf.hatstands.server.HatStandEntity;
 import net.minecraft.block.AbstractSkullBlock;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.IRenderTypeBuffer;
+import net.minecraft.client.renderer.ItemRenderer;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.Vector3f;
 import net.minecraft.client.renderer.entity.layers.ArmorLayer;
 import net.minecraft.client.renderer.entity.layers.LayerRenderer;
 import net.minecraft.client.renderer.entity.model.BipedModel;
 import net.minecraft.client.renderer.model.ItemCameraTransforms;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.tileentity.SkullTileEntityRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.inventory.EquipmentSlotType;
@@ -34,43 +41,37 @@ public final class HatStandArmorLayer extends LayerRenderer<HatStandEntity, HatS
     }
 
     @Override
-    public void render(final HatStandEntity entity, final float limbSwing, final float limbSwingAmount, final float delta, final float age, final float yaw, final float pitch, final float scale) {
+    public void render(final MatrixStack matrix, final IRenderTypeBuffer buffers, final int packedLight, final HatStandEntity entity, final float limbSwing, final float limbSwingAmount, final float delta, final float age, final float headYaw, final float headPitch) {
         final EquipmentSlotType slot = EquipmentSlotType.HEAD;
         final ItemStack stack = entity.getItemStackFromSlot(slot);
-        GlStateManager.pushMatrix();
+        matrix.push();
         if (stack.getItem() instanceof ArmorItem && ((ArmorItem) stack.getItem()).getEquipmentSlot() == slot) {
-            GlStateManager.translatef(0.0F, 20.0F * scale, 0.0F);
+            matrix.translate(0.0F, 20.0F / 16.0F, 0.0F);
             final float headScale = 7.0F / 8.0F;
-            GlStateManager.scalef(headScale, headScale, headScale);
+            matrix.scale(headScale, headScale, headScale);
             final ArmorItem item = (ArmorItem) stack.getItem();
             BipedModel<HatStandEntity> model = this.armor;
             model = ForgeHooksClient.getArmorModel(entity, stack, slot, model);
-            this.getEntityModel().setModelAttributes(model);
+            this.getEntityModel().copyModelAttributesTo(model);
             model.setLivingAnimations(entity, limbSwing, limbSwingAmount, delta);
             model.setVisible(false);
             model.bipedHead.showModel = true;
             model.bipedHeadwear.showModel = true;
-            this.bindTexture(getTexture(entity, item, stack, slot, ""));
             if (item.getItem() instanceof IDyeableArmorItem) {
                 final int rgb = ((IDyeableArmorItem) item).getColor(stack);
                 final float r = (float) (rgb >> 16 & 0xFF) / 0xFF;
                 final float g = (float) (rgb >> 8 & 0xFF) / 0xFF;
                 final float b = (float) (rgb & 0xFF) / 0xFF;
-                GlStateManager.color3f(r, g, b);
-                model.render(entity, limbSwing, limbSwingAmount, age, yaw, pitch, scale);
-                this.bindTexture(getTexture(entity, item, stack, slot, "overlay"));
-            }
-            GlStateManager.color3f(1.0F, 1.0F, 1.0F);
-            model.render(entity, limbSwing, limbSwingAmount, age, yaw, pitch, scale);
-            if (stack.hasEffect()) {
-                ArmorLayer.func_215338_a(this::bindTexture, entity, model, limbSwing, limbSwingAmount, delta, age, yaw, pitch, scale);
+                this.renderArmor(matrix, buffers, packedLight, stack.hasEffect(), model, r, g, b, getTexture(entity, item, stack, slot, ""));
+                this.renderArmor(matrix, buffers, packedLight, stack.hasEffect(), model, 1.0F, 1.0F, 1.0F, getTexture(entity, item, stack, slot, "overlay"));
+            } else {
+                this.renderArmor(matrix, buffers, packedLight, stack.hasEffect(), model, 1.0F, 1.0F, 1.0F, getTexture(entity, item, stack, slot, ""));
             }
         } else {
-            this.getEntityModel().transformToHead();
+            this.getEntityModel().transformToHead(matrix);
             final float headScale = 7.0F / 8.0F;
-            GlStateManager.scalef(headScale, headScale, headScale);
-            GlStateManager.color3f(1.0F, 1.0F, 1.0F);
-            if (stack.getItem() == Items.PLAYER_HEAD) {
+            matrix.scale(headScale, headScale, headScale);
+            if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractSkullBlock) {
                 GameProfile profile = null;
                 final CompoundNBT compound = stack.getTag();
                 if (compound != null) {
@@ -85,22 +86,23 @@ public final class HatStandArmorLayer extends LayerRenderer<HatStandEntity, HatS
                     }
                 }
                 final float sc = 19.0F / 16.0F;
-                GlStateManager.scalef(sc, -sc, -sc);
-                SkullTileEntityRenderer.instance.render(-0.5F, 0.0F, -0.5F, Direction.UP, 180.0F, ((AbstractSkullBlock) ((BlockItem) stack.getItem()).getBlock()).getSkullType(), profile, -1, limbSwing);
+                matrix.scale(sc, -sc, -sc);
+                matrix.translate(-0.5F, 0.0F, -0.5F);
+                SkullTileEntityRenderer.render(null, 180.0F, ((AbstractSkullBlock) ((BlockItem) stack.getItem()).getBlock()).getSkullType(), profile, limbSwing, matrix, buffers, packedLight);
             } else {
                 final float sc = 10.0F / 16.0F;
-                GlStateManager.translatef(0.0F, -0.25F, 0.0F);
-                GlStateManager.rotatef(180.0F, 0.0F, 1.0F, 0.0F);
-                GlStateManager.scalef(sc, -sc, -sc);
-                Minecraft.getInstance().getItemRenderer().renderItem(stack, entity, ItemCameraTransforms.TransformType.HEAD, false);
+                matrix.translate(0.0F, -0.25F, 0.0F);
+                matrix.rotate(Vector3f.YP.rotationDegrees(180.0F));
+                matrix.scale(sc, -sc, -sc);
+                Minecraft.getInstance().getFirstPersonRenderer().renderItemSide(entity, stack, ItemCameraTransforms.TransformType.HEAD, false, matrix, buffers, packedLight);
             }
         }
-        GlStateManager.popMatrix();
+        matrix.pop();
     }
 
-    @Override
-    public boolean shouldCombineTextures() {
-        return false;
+    private void renderArmor(final MatrixStack matrix, final IRenderTypeBuffer buffers, final int packedLight, final boolean glint, final BipedModel<?> model, final float r, final float g, final float b, final ResourceLocation texture) {
+        final IVertexBuilder ivertexbuilder = ItemRenderer.getBuffer(buffers, RenderType.getEntityCutoutNoCull(texture), false, glint);
+        model.render(matrix, ivertexbuilder, packedLight, OverlayTexture.NO_OVERLAY, r, g, b, 1.0F);
     }
 
     private static ResourceLocation getTexture(final Entity entity, final ArmorItem armor, final ItemStack stack, final EquipmentSlotType slot, final String type) {

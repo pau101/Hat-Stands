@@ -51,7 +51,7 @@ public final class HatStandItem extends Item {
             if (!stand.hasCustomName()) {
                 stand.onName(player, stack);
             }
-            world.playSound(null, placePos, HatStands.SoundEvents.ENTITY_HAT_STAND_PLACE.orElseThrow(IllegalStateException::new), stand.getSoundCategory(), 0.75F, 0.8F);
+            world.playSound(null, placePos, HatStands.SoundEvents.ENTITY_HAT_STAND_PLACE.get(), stand.getSoundCategory(), 0.75F, 0.8F);
         }
         stack.shrink(1);
         return ActionResultType.SUCCESS;

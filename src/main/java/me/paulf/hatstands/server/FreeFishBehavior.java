@@ -64,7 +64,7 @@ public class FreeFishBehavior implements Behavior {
                 final BlockPos pos = origin.offset(facing, n / 4 + 3).down(n % 4 + 1);
                 final BlockState state = e.world.getBlockState(pos);
                 if (state.getMaterial() == Material.WATER) {
-                    final Vec3d begin = new Vec3d(e.posX, e.posY + e.getEyeHeight(), e.posZ);
+                    final Vec3d begin = new Vec3d(e.getPosX(), e.getPosY() + e.getEyeHeight(), e.getPosZ());
                     final Vec3d end = new Vec3d(pos.getX() + 0.5D, pos.getY() + 1.0D, pos.getZ() + 0.5D);
                     if (e.world.rayTraceBlocks(new RayTraceContext(begin, end, RayTraceContext.BlockMode.COLLIDER, RayTraceContext.FluidMode.NONE, e)).getType() != RayTraceResult.Type.MISS) {
                         break;
@@ -72,11 +72,11 @@ public class FreeFishBehavior implements Behavior {
                     final FakePlayer angler = this.createAngler();
                     e.rotationPitch = 10.0F;
                     // Position for hook to shoot from
-                    angler.setLocationAndAngles(e.posX, e.posY, e.posZ + 0.25D, e.rotationYaw, 35.0F);
+                    angler.setLocationAndAngles(e.getPosX(), e.getPosY(), e.getPosZ() + 0.25D, e.rotationYaw, 35.0F);
                     this.hook = new FishingBobberEntity(angler, e.world, 0, 0);
                     // Position client for line to start at center of hat stand face
                     final Vec3d offset = new Vec3d(0.0D, e.getEyeHeight(), 0.25D).rotateYaw(Mth.toRadians(-e.rotationYaw));
-                    angler.setLocationAndAngles(e.posX + offset.x - 0.35D, e.posY + offset.y + 0.45D - angler.getEyeHeight(), e.posZ + offset.z - 0.8D, 0.0F, 35.0F);
+                    angler.setLocationAndAngles(e.getPosX() + offset.x - 0.35D, e.getPosY() + offset.y + 0.45D - angler.getEyeHeight(), e.getPosZ() + offset.z - 0.8D, 0.0F, 35.0F);
                     angler.setPrimaryHand(HandSide.RIGHT);
                     angler.setHeldItem(Hand.MAIN_HAND, new ItemStack(Items.FISHING_ROD));
                     angler.setInvisible(true);
@@ -91,7 +91,7 @@ public class FreeFishBehavior implements Behavior {
             if (this.hook.onGround && e.world.getBlockState(new BlockPos(this.hook)).getMaterial() != Material.WATER || this.hook.getMotion().y == 0.0F) {
                 // Position for loot to fly towards
                 if (this.angler != null) {
-                    this.angler.setLocationAndAngles(e.posX, e.posY, e.posZ, 0.0F, 35.0F);
+                    this.angler.setLocationAndAngles(e.getPosX(), e.getPosY(), e.getPosZ(), 0.0F, 35.0F);
                     this.hook.handleHookRetraction(this.angler.getHeldItemMainhand());
                 }
                 this.hook = null;
@@ -143,10 +143,10 @@ public class FreeFishBehavior implements Behavior {
         if (angler != null && angler == this.angler) {
             final World world = hook.world;
             for (final ItemStack stack : event.getDrops()) {
-                final ItemEntity item = new ItemEntity(world, hook.posX, hook.posY, hook.posZ, stack);
-                final double dx = angler.posX - hook.posX;
-                final double dy = angler.posY - hook.posY;
-                final double dz = angler.posZ - hook.posZ;
+                final ItemEntity item = new ItemEntity(world, hook.getPosX(), hook.getPosY(), hook.getPosZ(), stack);
+                final double dx = angler.getPosX() - hook.getPosX();
+                final double dy = angler.getPosY() - hook.getPosY();
+                final double dz = angler.getPosZ() - hook.getPosZ();
                 final double dist = MathHelper.sqrt(dx * dx + dy * dy + dz * dz);
                 final double mag = 0.1D;
                 item.setMotion(new Vec3d(

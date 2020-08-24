@@ -45,9 +45,9 @@ public abstract class RunnableBehavior implements Behavior {
             final World world = (World) event.getWorld();
             final BlockPos pos = event.getPos();
             // new BlockPos(e).equals(pos.up())
-            if (this.stand.posX >= pos.getX() && this.stand.posX < pos.getX() + 1.0D &&
-                this.stand.posZ >= pos.getZ() && this.stand.posZ < pos.getZ() + 1.0D &&
-                this.stand.posY >= pos.getY() + 1.0D && this.stand.posY < pos.getY() + 2.0D) {
+            if (this.stand.getPosX() >= pos.getX() && this.stand.getPosX() < pos.getX() + 1.0D &&
+                this.stand.getPosZ() >= pos.getZ() && this.stand.getPosZ() < pos.getZ() + 1.0D &&
+                this.stand.getPosY() >= pos.getY() + 1.0D && this.stand.getPosY() < pos.getY() + 2.0D) {
                 final boolean powered = world.isBlockPowered(pos);
                 if (powered && (!this.powered || !this.pos.equals(pos))) {
                     this.run();

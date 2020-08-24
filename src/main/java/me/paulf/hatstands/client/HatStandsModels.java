@@ -15,6 +15,6 @@ public final class HatStandsModels {
 
     @SubscribeEvent
     public static void onRegister(final FMLClientSetupEvent event) {
-        RenderingRegistry.registerEntityRenderingHandler(HatStandEntity.class, HatStandRenderer::new);
+        RenderingRegistry.registerEntityRenderingHandler(HatStands.EntityTypes.HAT_STAND.get(), HatStandRenderer::new);
     }
 }

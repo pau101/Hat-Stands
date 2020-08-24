@@ -103,7 +103,7 @@ public final class HatStandBehaviors {
                             e.world.addEntity(arrow);
                             e.world.playSound(
                                 null,
-                                e.posX, e.posY, e.posZ,
+                                e.getPosX(), e.getPosY(), e.getPosZ(),
                                 SoundEvents.ENTITY_ARROW_SHOOT,
                                 e.getSoundCategory(),
                                 1.0F,
@@ -140,8 +140,8 @@ public final class HatStandBehaviors {
                         );
                         if (!entities.isEmpty()) {
                             final CowEntity beef = entities.get(e.getRNG().nextInt(entities.size()));
-                            if (beef.posY + beef.getHeight() > e.world.getHeight(Heightmap.Type.MOTION_BLOCKING, new BlockPos(beef)).getY()) {
-                                ((ServerWorld) e.world).addLightningBolt(new LightningBoltEntity(e.world, beef.posX, beef.posY, beef.posZ, false));
+                            if (beef.getPosY() + beef.getHeight() > e.world.getHeight(Heightmap.Type.MOTION_BLOCKING, new BlockPos(beef)).getY()) {
+                                ((ServerWorld) e.world).addLightningBolt(new LightningBoltEntity(e.world, beef.getPosX(), beef.getPosY(), beef.getPosZ(), false));
                             }
                         }
                     }
@@ -288,7 +288,7 @@ public final class HatStandBehaviors {
                 }
 
                 LazyOptional<IItemHandler> chest() {
-                    final BlockPos below = new BlockPos(e.posX, e.posY - 0.5D, e.posZ);
+                    final BlockPos below = new BlockPos(e.getPosX(), e.getPosY() - 0.5D, e.getPosZ());
                     if (e.world.getBlockState(below).isIn(Tags.Blocks.CHESTS)) {
                         final TileEntity entity = e.world.getTileEntity(below);
                         if (entity != null) {
@@ -304,9 +304,9 @@ public final class HatStandBehaviors {
                     if (e.ticksExisted % 5 == 0 && e.getRNG().nextFloat() < 0.4F) {
                         e.world.addParticle(
                             ParticleTypes.HEART,
-                            e.posX + e.getRNG().nextFloat() * e.getWidth() * 2.0F - e.getWidth(),
-                            e.posY + 0.5D + e.getRNG().nextFloat() * e.getHeight(),
-                            e.posZ + e.getRNG().nextFloat() * e.getWidth() * 2.0F - e.getWidth(),
+                            e.getPosX() + e.getRNG().nextFloat() * e.getWidth() * 2.0F - e.getWidth(),
+                            e.getPosY() + 0.5D + e.getRNG().nextFloat() * e.getHeight(),
+                            e.getPosZ() + e.getRNG().nextFloat() * e.getWidth() * 2.0F - e.getWidth(),
                             e.getRNG().nextGaussian() * 0.02D,
                             e.getRNG().nextGaussian() * 0.02D,
                             e.getRNG().nextGaussian() * 0.02D
@@ -370,7 +370,7 @@ public final class HatStandBehaviors {
             .putServer("sexysong", e -> new RunnableBehavior(e) {
                 @Override
                 protected void run() {
-                    this.stand.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG.orElseThrow(IllegalStateException::new), 1.0F, 1.0F);
+                    this.stand.playSound(HatStands.SoundEvents.ENTITY_HAT_STAND_SEXYSONG.get(), 1.0F, 1.0F);
                 }
             })
             .putClient("smallspy", e -> new Behavior() {

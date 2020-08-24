@@ -116,7 +116,16 @@ public final class HatStandEntity extends LivingEntity {
 
     @Override
     public ItemStack getPickedResult(final RayTraceResult target) {
-        return new ItemStack(HatStands.Items.HAT_STAND.orElseThrow(IllegalStateException::new));
+        return new ItemStack(HatStands.Items.HAT_STAND.get());
+    }
+
+    @Override
+    public ITextComponent getDisplayName() {
+        final ItemStack stack = this.getItemStackFromSlot(EquipmentSlotType.HEAD);
+        if (!stack.isEmpty() && stack.hasDisplayName()) {
+            return stack.getDisplayName();
+        }
+        return super.getDisplayName();
     }
 
     @Override
@@ -171,17 +180,17 @@ public final class HatStandEntity extends LivingEntity {
 
     @Override
     protected SoundEvent getFallSound(final int distance) {
-        return HatStands.SoundEvents.ENTITY_HAT_STAND_FALL.orElseThrow(IllegalStateException::new);
+        return HatStands.SoundEvents.ENTITY_HAT_STAND_FALL.get();
     }
 
     @Override
     protected SoundEvent getHurtSound(final DamageSource damage) {
-        return HatStands.SoundEvents.ENTITY_HAT_STAND_HIT.orElseThrow(IllegalStateException::new);
+        return HatStands.SoundEvents.ENTITY_HAT_STAND_HIT.get();
     }
 
     @Override
     protected SoundEvent getDeathSound() {
-        return HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK.orElseThrow(IllegalStateException::new);
+        return HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK.get();
     }
 
     @Nullable
@@ -293,9 +302,9 @@ public final class HatStandEntity extends LivingEntity {
     }
 
     void lookAt(final Entity target) {
-        final double dx = target.posX - this.posX;
-        final double dy = (target.posY + target.getEyeHeight()) - (this.posY + this.getEyeHeight());
-        final double dz = target.posZ - this.posZ;
+        final double dx = target.getPosX() - this.getPosX();
+        final double dy = (target.getPosY() + target.getEyeHeight()) - (this.getPosY() + this.getEyeHeight());
+        final double dz = target.getPosZ() - this.getPosZ();
         this.rotationPitch = -Mth.toDegrees(MathHelper.atan2(dy, MathHelper.sqrt(dx * dx + dz * dz)));
         this.rotationYawHead = Mth.toDegrees(MathHelper.atan2(dz, dx)) - 90.0F;
     }
@@ -316,9 +325,9 @@ public final class HatStandEntity extends LivingEntity {
 
     @Override
     public void recalculateSize() {
-        final double x = this.posX;
-        final double y = this.posY;
-        final double z = this.posZ;
+        final double x = this.getPosX();
+        final double y = this.getPosY();
+        final double z = this.getPosZ();
         super.recalculateSize();
         this.setPosition(x, y, z);
     }
@@ -409,7 +418,7 @@ public final class HatStandEntity extends LivingEntity {
     }
 
     private void dropItem() {
-        final ItemStack stack = new ItemStack(HatStands.Items.HAT_STAND.orElseThrow(IllegalStateException::new));
+        final ItemStack stack = new ItemStack(HatStands.Items.HAT_STAND.get());
         if (this.hasCustomName()) {
             stack.setDisplayName(this.getCustomName());
         }
@@ -437,7 +446,7 @@ public final class HatStandEntity extends LivingEntity {
     }
 
     private void playBreakSound() {
-        this.world.playSound(null, this.posX, this.posY, this.posZ, HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK.orElseThrow(IllegalStateException::new), this.getSoundCategory(), 1.0F, 1.0F);
+        this.world.playSound(null, this.getPosX(), this.getPosY(), this.getPosZ(), HatStands.SoundEvents.ENTITY_HAT_STAND_BREAK.get(), this.getSoundCategory(), 1.0F, 1.0F);
     }
 
     @Override
@@ -449,7 +458,7 @@ public final class HatStandEntity extends LivingEntity {
 
     private void playParticles() {
         if (this.world instanceof ServerWorld) {
-            ((ServerWorld) this.world).spawnParticle(new BlockParticleData(ParticleTypes.BLOCK, Blocks.OAK_PLANKS.getDefaultState()), this.posX, this.posY + this.getHeight() / 1.5D, this.posZ, 6, this.getWidth() / 4.0D, this.getHeight() / 4.0D, this.getWidth() / 4.0D, 0.05D);
+            ((ServerWorld) this.world).spawnParticle(new BlockParticleData(ParticleTypes.BLOCK, Blocks.OAK_PLANKS.getDefaultState()), this.getPosX(), this.getPosY() + this.getHeight() / 1.5D, this.getPosZ(), 6, this.getWidth() / 4.0D, this.getHeight() / 4.0D, this.getWidth() / 4.0D, 0.05D);
         }
     }
 
@@ -467,7 +476,7 @@ public final class HatStandEntity extends LivingEntity {
     public void handleStatusUpdate(final byte id) {
         if (id == PUNCH_ID) {
             if (this.world.isRemote) {
-                this.world.playSound(this.posX, this.posY, this.posZ, HatStands.SoundEvents.ENTITY_HAT_STAND_HIT.orElseThrow(IllegalStateException::new), this.getSoundCategory(), 0.3F, 1.0F, false);
+                this.world.playSound(this.getPosX(), this.getPosY(), this.getPosZ(), HatStands.SoundEvents.ENTITY_HAT_STAND_HIT.get(), this.getSoundCategory(), 0.3F, 1.0F, false);
                 this.lastPunchTime = this.world.getGameTime();
             }
         } else {
@@ -530,7 +539,7 @@ public final class HatStandEntity extends LivingEntity {
     }
 
     public static HatStandEntity create(final World world, final BlockPos pos, final float yaw) {
-        final HatStandEntity hatStand = HatStands.EntityTypes.HAT_STAND.orElseThrow(IllegalStateException::new).create(world);
+        final HatStandEntity hatStand = HatStands.EntityTypes.HAT_STAND.get().create(world);
         if (hatStand == null) throw new NullPointerException("entity");
         hatStand.setLocationAndAngles(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, yaw, 0.0F);
         hatStand.rotationYawHead = yaw;

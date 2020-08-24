@@ -226,7 +226,7 @@ public class AskAlexaBehavior implements Behavior {
                         final Biome biome = world.getBiome(pos);
                         final String verb, noun;
                         if (biome.getPrecipitation() != Biome.RainType.NONE) {
-                            if (biome.func_225486_c(world.getHeight(Heightmap.Type.MOTION_BLOCKING, pos)) >= 0.15F) {
+                            if (biome.getTemperature(world.getHeight(Heightmap.Type.MOTION_BLOCKING, pos)) >= 0.15F) {
                                 verb = "raining";
                                 noun = "rain";
                             } else {
@@ -368,7 +368,7 @@ public class AskAlexaBehavior implements Behavior {
                 fp.moveToBlockPosAndAngles(pos, 0.0F, 0.0F);
                 fp.setHeldItem(Hand.MAIN_HAND, ItemStack.EMPTY);
                 fp.setSneaking(false);
-                if (state.onBlockActivated(world, fp, Hand.MAIN_HAND, new BlockRayTraceResult(Vec3d.ZERO, dir, n, false))) {
+                if (state.onBlockActivated(world, fp, Hand.MAIN_HAND, new BlockRayTraceResult(Vec3d.ZERO, dir, n, false)).isSuccess()) {
                     return false;
                 }
             } else if (recurse && state.isNormalCube(world, n) && !this.togglePower(n, false)) {
