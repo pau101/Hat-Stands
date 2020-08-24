@@ -1,7 +1,6 @@
 package me.paulf.hatstands.server;
 
 import com.google.common.base.CharMatcher;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import me.paulf.hatstands.HatStands;
 import me.paulf.hatstands.util.Mth;
@@ -14,14 +13,9 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.Pose;
 import net.minecraft.entity.effect.LightningBoltEntity;
-import net.minecraft.entity.passive.CowEntity;
-import net.minecraft.entity.passive.PigEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.entity.projectile.ArrowEntity;
-import net.minecraft.entity.projectile.EggEntity;
 import net.minecraft.inventory.EquipmentSlotType;
-import net.minecraft.inventory.container.ContainerType;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
@@ -30,17 +24,14 @@ import net.minecraft.network.IPacket;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.network.play.server.SOpenWindowPacket;
 import net.minecraft.particles.BlockParticleData;
 import net.minecraft.particles.ParticleTypes;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ActionResultType;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.Hand;
 import net.minecraft.util.HandSide;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.SoundEvent;
-import net.minecraft.util.SoundEvents;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -50,22 +41,11 @@ import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.World;
-import net.minecraft.world.gen.Heightmap;
-import net.minecraft.world.server.ServerChunkProvider;
 import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.Constants;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.world.BlockEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.network.NetworkHooks;
 
 import javax.annotation.Nullable;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 
@@ -117,6 +97,15 @@ public final class HatStandEntity extends LivingEntity {
     @Override
     public ItemStack getPickedResult(final RayTraceResult target) {
         return new ItemStack(HatStands.Items.HAT_STAND.orElseThrow(IllegalStateException::new));
+    }
+
+    @Override
+    public ITextComponent getDisplayName() {
+        final ItemStack stack = this.getItemStackFromSlot(EquipmentSlotType.HEAD);
+        if (!stack.isEmpty() && stack.hasDisplayName()) {
+            return stack.getDisplayName();
+        }
+        return super.getDisplayName();
     }
 
     @Override
