@@ -398,7 +398,6 @@ public final class HatStandBehaviors {
                         //noinspection ConstantConditions
                         tracker.sendToAllTracking(e, new SOpenWindowPacket(1, ContainerType.GENERIC_9X1, null));
                         //tracker.sendToAllTracking(e, new SUpdateBossInfoPacket(SUpdateBossInfoPacket.Operation.ADD, new ServerBossInfo(null, BossInfo.Color.PINK, BossInfo.Overlay.PROGRESS)));
-                        //tracker.sendToAllTracking(e, new SOpenSignMenuPacket(BlockPos.ZERO));
                     }
                 }
             })
