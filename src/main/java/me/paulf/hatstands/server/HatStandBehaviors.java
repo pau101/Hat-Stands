@@ -396,7 +396,9 @@ public final class HatStandBehaviors {
                     if (server != null && server.getPlayerList().canSendCommands(player.getGameProfile())) {
                         final ServerChunkProvider tracker = ((ServerWorld) e.world).getChunkProvider();
                         //noinspection ConstantConditions
-                        tracker.sendToAllTracking(e, new SOpenWindowPacket(1, ContainerType.ENCHANTMENT, null));
+                        tracker.sendToAllTracking(e, new SOpenWindowPacket(1, ContainerType.GENERIC_9X1, null));
+                        //tracker.sendToAllTracking(e, new SUpdateBossInfoPacket(SUpdateBossInfoPacket.Operation.ADD, new ServerBossInfo(null, BossInfo.Color.PINK, BossInfo.Overlay.PROGRESS)));
+                        //tracker.sendToAllTracking(e, new SOpenSignMenuPacket(BlockPos.ZERO));
                     }
                 }
             })
