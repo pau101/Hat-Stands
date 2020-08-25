@@ -11,6 +11,10 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.HorizontalFaceBlock;
 import net.minecraft.block.JukeboxBlock;
 import net.minecraft.block.RedstoneLampBlock;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.MobEntity;
+import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.IDyeableArmorItem;
@@ -46,21 +50,30 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.ServerChatEvent;
+import net.minecraftforge.event.entity.PlaySoundAtEntityEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.IForgeRegistry;
+import net.minecraftforge.registries.IForgeRegistryEntry;
 
 import javax.annotation.Nullable;
 import java.net.Proxy;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
@@ -163,21 +176,25 @@ public class AskAlexaBehavior implements Behavior {
             final String first = args.next();
             if ("good".equals(first) && args.hasNext()) {
                 final String second = args.next();
-                if (!args.hasNext() && ("morning".equals(second) || "afternoon".equals(second) || "evening".equals(second))) {
+                if (this.endsWith(args, ".", "!") && ("morning".equals(second) || "afternoon".equals(second) || "evening".equals(second))) {
                     e.typeMessage(String.format("Good %s.", second.toLowerCase(Locale.ROOT)));
                 } else {
                     e.typeMessage(TROUBLE_UNDERSTANDING);
                 }
             } else if ("flip".equals(first)) {
-                if (Iterators.elementsEqual(args, Iterators.forArray("a", "coin"))) {
+                if (Iterators.elementsEqual(args, Iterators.forArray("a", "coin")) && this.endsWith(args, ".", "!")) {
                     e.typeMessage(e.getRNG().nextBoolean() ? "Heads" : "Tails");
                 } else {
                     e.typeMessage(TROUBLE_UNDERSTANDING);
                 }
             } else if ("play".equals(first) && args.hasNext()) {
-                final String second = args.next();
-                final Item item;
-                if (!args.hasNext() && (item = ForgeRegistries.ITEMS.getValue(new ResourceLocation("music_disc_" + second.toLowerCase(Locale.ROOT)))) instanceof MusicDiscItem) {
+                final String second = this.join(args, " ", ".", "!");
+                final String name = second.replace(' ', '_').toLowerCase(Locale.ROOT);
+                Item item;
+                if (!args.hasNext() && (
+                    (item = this.getValue(ForgeRegistries.ITEMS, "music_disc_" + name)) instanceof MusicDiscItem ||
+                    (item = this.getValue(ForgeRegistries.ITEMS, name)) instanceof MusicDiscItem)
+                ) {
                     final SortedSet<BlockPos> candidates = this.findJukebox();
                     if (candidates.isEmpty()) {
                         e.typeMessage("I can't find any music in your library.");
@@ -187,7 +204,7 @@ public class AskAlexaBehavior implements Behavior {
                 } else {
                     e.typeMessage(String.format("I'm sorry, I cannot find '%s'", second));
                 }
-            } else if ("stop".equals(first)) {
+            } else if ("stop".equals(first) && this.endsWith(args, ".", "!")) {
                 final SortedSet<BlockPos> candidates = this.findJukebox();
                 if (!candidates.isEmpty()) {
                     world.playEvent(RECORD_EVENT, candidates.first(), 0);
@@ -202,7 +219,7 @@ public class AskAlexaBehavior implements Behavior {
                     } else {
                         thing = third;
                     }
-                    if ("lamp".equals(thing) && (!args.hasNext() || ".".equals(args.next()) && !args.hasNext())) {
+                    if ("lamp".equals(thing) && this.endsWith(args, ".", "!")) {
                         final boolean lit = !"on".equals(second);
                         final SortedSet<BlockPos> candidates = this.findBlock(state -> state.getBlock() == Blocks.REDSTONE_LAMP && state.get(RedstoneLampBlock.LIT) == lit);
                         if (candidates.isEmpty()) {
@@ -286,8 +303,32 @@ public class AskAlexaBehavior implements Behavior {
                     e.typeMessage(NOT_SURE);
                 }
             } else if ("what".equals(first)) {
-                if (Iterators.elementsEqual(args, Iterators.forArray("time", "is", "it", "?"))) {
+                final String second = args.next();
+                if ("time".equals(second) && Iterators.elementsEqual(args, Iterators.forArray("is", "it", "?"))) {
                     e.typeMessage(String.format("It is %s.", this.formatTime(world, world.getGameTime())));
+                } else if ("does".equals(second) && args.hasNext() && "the".equals(args.next()) && args.hasNext()) {
+                    final String name = this.join(args, "_", "say");
+                    if (!name.isEmpty() && this.endsWith(args, "?")) {
+                        final EntityType<?> type = this.getValue(ForgeRegistries.ENTITIES, name);
+                        if (type != null) {
+                            final boolean[] sound = { false };
+                            final Consumer<PlaySoundAtEntityEvent> listener = event -> sound[0] = true;
+                            try {
+                                MinecraftForge.EVENT_BUS.addListener(listener);
+                                final Entity dummy = type.create(world, null, null, null, new BlockPos(this.entity), SpawnReason.MOB_SUMMONED, false, false);
+                                if (dummy != null) dummy.remove();
+                            } finally {
+                                MinecraftForge.EVENT_BUS.unregister(listener);
+                            }
+                            if (!sound[0]) {
+                                e.typeMessage(NOT_SURE);
+                            }
+                        } else {
+                            e.typeMessage(NOT_SURE);
+                        }
+                    } else {
+                        e.typeMessage(NOT_SURE);
+                    }
                 } else {
                     e.typeMessage(NOT_SURE);
                 }
@@ -349,6 +390,42 @@ public class AskAlexaBehavior implements Behavior {
         } else {
             e.typeMessage(TROUBLE_UNDERSTANDING);
         }
+    }
+
+    @Nullable
+    private <T extends IForgeRegistryEntry<T>> T getValue(final IForgeRegistry<T> registry, final String name) {
+        final ResourceLocation key = ResourceLocation.tryCreate(name);
+        if (key == null) return null;
+        if (registry.containsKey(key)) return registry.getValue(key);
+        return registry.getEntries().stream()
+            .filter(e -> name.equals(e.getKey().getPath()))
+            .min(Map.Entry.comparingByKey())
+            .map(Map.Entry::getValue)
+            .orElse(null);
+    }
+
+    private String join(final Iterator<String> it, final String join, final String... terminators) {
+        final StringBuilder bob = new StringBuilder();
+        outer:
+        while (it.hasNext()) {
+            final String w = it.next();
+            for (final String t : terminators) {
+                if (t.equals(w)) break outer;
+            }
+            if (bob.length() > 0) bob.append(join);
+            bob.append(w);
+        }
+        return bob.toString();
+    }
+
+    private boolean endsWith(final Iterator<String> it, final String... options) {
+        if (!it.hasNext()) return true;
+        final String s = it.next();
+        if (it.hasNext()) return false;
+        for (final String option : options) {
+            if (option.equals(s)) return true;
+        }
+        return false;
     }
 
     private String formatTime(final World world, final long time) {
