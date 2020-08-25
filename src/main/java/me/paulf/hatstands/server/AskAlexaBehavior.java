@@ -89,7 +89,9 @@ public class AskAlexaBehavior implements Behavior {
 
     private final HatStandEntity entity;
 
-    private final Splitter argSplitter = Splitter.on(Pattern.compile(" |(?=[!,.;?])")).omitEmptyStrings();
+    private final String deliminators = "!,.;?";
+
+    private final Splitter argSplitter = Splitter.on(Pattern.compile(" |(?=[" + this.deliminators + "])")).omitEmptyStrings();
 
     private final EvictingQueue<Request> requests = EvictingQueue.create(16);
 
@@ -176,24 +178,26 @@ public class AskAlexaBehavior implements Behavior {
             final String first = args.next();
             if ("good".equals(first) && args.hasNext()) {
                 final String second = args.next();
-                if (this.endsWith(args, ".", "!") && ("morning".equals(second) || "afternoon".equals(second) || "evening".equals(second))) {
+                if (this.endsWith(args, ".!") && ("morning".equals(second) || "afternoon".equals(second) || "evening".equals(second))) {
                     e.typeMessage(String.format("Good %s.", second.toLowerCase(Locale.ROOT)));
                 } else {
                     e.typeMessage(TROUBLE_UNDERSTANDING);
                 }
             } else if ("flip".equals(first)) {
-                if (Iterators.elementsEqual(args, Iterators.forArray("a", "coin")) && this.endsWith(args, ".", "!")) {
+                if (Iterators.elementsEqual(args, Iterators.forArray("a", "coin")) && this.endsWith(args, ".!")) {
                     e.typeMessage(e.getRNG().nextBoolean() ? "Heads" : "Tails");
                 } else {
                     e.typeMessage(TROUBLE_UNDERSTANDING);
                 }
             } else if ("play".equals(first) && args.hasNext()) {
-                final String second = this.join(args, " ", ".", "!");
+                final String second = this.join(args, " ", ".!");
                 final String name = second.replace(' ', '_').toLowerCase(Locale.ROOT);
                 Item item;
-                if (!args.hasNext() && (
+                if (second.isEmpty() || args.hasNext()) {
+                    e.typeMessage(TROUBLE_UNDERSTANDING);
+                } else if (
                     (item = this.getValue(ForgeRegistries.ITEMS, "music_disc_" + name)) instanceof MusicDiscItem ||
-                    (item = this.getValue(ForgeRegistries.ITEMS, name)) instanceof MusicDiscItem)
+                    (item = this.getValue(ForgeRegistries.ITEMS, name)) instanceof MusicDiscItem
                 ) {
                     final SortedSet<BlockPos> candidates = this.findJukebox();
                     if (candidates.isEmpty()) {
@@ -204,7 +208,7 @@ public class AskAlexaBehavior implements Behavior {
                 } else {
                     e.typeMessage(String.format("I'm sorry, I cannot find '%s'", second));
                 }
-            } else if ("stop".equals(first) && this.endsWith(args, ".", "!")) {
+            } else if ("stop".equals(first) && this.endsWith(args, ".!")) {
                 final SortedSet<BlockPos> candidates = this.findJukebox();
                 if (!candidates.isEmpty()) {
                     world.playEvent(RECORD_EVENT, candidates.first(), 0);
@@ -219,7 +223,7 @@ public class AskAlexaBehavior implements Behavior {
                     } else {
                         thing = third;
                     }
-                    if ("lamp".equals(thing) && this.endsWith(args, ".", "!")) {
+                    if ("lamp".equals(thing) && this.endsWith(args, ".!")) {
                         final boolean lit = !"on".equals(second);
                         final SortedSet<BlockPos> candidates = this.findBlock(state -> state.getBlock() == Blocks.REDSTONE_LAMP && state.get(RedstoneLampBlock.LIT) == lit);
                         if (candidates.isEmpty()) {
@@ -404,13 +408,14 @@ public class AskAlexaBehavior implements Behavior {
             .orElse(null);
     }
 
-    private String join(final Iterator<String> it, final String join, final String... terminators) {
+    private String join(final Iterator<String> it, final String join, final String terminator) {
         final StringBuilder bob = new StringBuilder();
-        outer:
         while (it.hasNext()) {
             final String w = it.next();
-            for (final String t : terminators) {
-                if (t.equals(w)) break outer;
+            if (terminator.equals(w)) break;
+            if (w.length() == 1 && this.deliminators.indexOf(w.charAt(0)) != -1) {
+                if (!it.hasNext() && terminator.indexOf(w.charAt(0)) == -1) bob.setLength(0);
+                break;
             }
             if (bob.length() > 0) bob.append(join);
             bob.append(w);
@@ -418,14 +423,11 @@ public class AskAlexaBehavior implements Behavior {
         return bob.toString();
     }
 
-    private boolean endsWith(final Iterator<String> it, final String... options) {
+    private boolean endsWith(final Iterator<String> it, final String terminators) {
         if (!it.hasNext()) return true;
         final String s = it.next();
         if (it.hasNext()) return false;
-        for (final String option : options) {
-            if (option.equals(s)) return true;
-        }
-        return false;
+        return s.length() == 1 && terminators.indexOf(s.charAt(0)) != -1;
     }
 
     private String formatTime(final World world, final long time) {
