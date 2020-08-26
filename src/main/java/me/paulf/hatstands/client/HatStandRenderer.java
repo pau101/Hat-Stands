@@ -32,6 +32,6 @@ public final class HatStandRenderer extends LivingRenderer<HatStandEntity, HatSt
 
     @Override
     protected boolean canRenderName(final HatStandEntity stand) {
-        return Minecraft.isGuiEnabled() && this.renderManager.pointedEntity == stand;
+        return Minecraft.isGuiEnabled() && this.renderManager.pointedEntity == stand && stand.hasCustomName();
     }
 }
