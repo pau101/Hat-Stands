@@ -381,7 +381,6 @@ public class AskAlexaBehavior implements Behavior {
                                 e.typeMessage(SOMETHING_WENT_WRONG);
                             }
                         }
-
                     }, server);
                 } else {
                     e.typeMessage(NOT_SURE);
